@@ -35,21 +35,38 @@ export async function sendPrivateReplyForIntent(intentId: string) {
   const intent = state.intents.find((i) => i.id === intentId);
   if (!intent?.commentId) throw new Error('Intention sans commentaire Facebook : réponse privée impossible.');
   if (!intent.code) throw new Error('Produit non identifié : validez d’abord l’intention.');
+  const message = {
+    text: `Bonjour 👋\n\nVous avez demandé :\n\n${summary(intent)}\n\nSouhaitez-vous confirmer votre commande ?`,
+    quick_replies: quick([['✅ Confirmer', `CONFIRM:${intent.id}`], ['❌ Annuler', `CANCEL:${intent.id}`]]),
+  };
+  const attempts: unknown[] = [];
   try {
-    const res = await send({ comment_id: intent.commentId }, {
-      text: `Bonjour 👋\n\nVous avez demandé :\n\n${summary(intent)}\n\nSouhaitez-vous confirmer votre commande ?`,
-      quick_replies: quick([['✅ Confirmer', `CONFIRM:${intent.id}`], ['❌ Annuler', `CANCEL:${intent.id}`]]),
-    });
-    const file = saveEvidence('T9', `private_reply_${intent.commentId}`, res);
+    // Les commentaires lus sur un live_video ont un id court ("1573…") alors que la Send API
+    // attend parfois la forme "<objet>_<commentaire>". On essaie les formes possibles, dans l'ordre.
+    let res: { recipient_id?: string; message_id?: string } | undefined;
+    let usedId = intent.commentId;
+    for (const candidate of commentIdCandidates(intent.commentId)) {
+      try {
+        res = await send({ comment_id: candidate }, message);
+        usedId = candidate;
+        break;
+      } catch (e) {
+        const err = e as GraphError;
+        attempts.push({ comment_id: candidate, error: err.body ?? err.message });
+        if (err.subcode !== 1893060) throw e; // autre erreur que "ID de commentaire invalide"
+      }
+    }
+    if (!res) throw Object.assign(new Error('Aucune forme d’identifiant de commentaire acceptée par Meta.'), { body: { attempts } });
+    const file = saveEvidence('T9', `private_reply_${intent.commentId}`, { usedId, attempts, res });
     intent.privateReply = { status: 'SENT', psid: res.recipient_id, messageId: res.message_id, at: new Date().toISOString() };
     if (res.recipient_id) linkPsid(res.recipient_id, intent.id);
-    recordTest('T9', { evidenceFile: file, note: `Réponse privée envoyée (recipient_id ${res.recipient_id ? 'reçu' : 'absent'}). Vérifier la réception côté testeur.` });
+    recordTest('T9', { evidenceFile: file, note: `Réponse privée envoyée avec comment_id « ${usedId === intent.commentId ? 'court' : 'préfixé'} » (recipient_id ${res.recipient_id ? 'reçu' : 'absent'}). Vérifier la réception.` });
     log('info', `Réponse privée envoyée pour ${intent.code} (commentaire ${intent.commentId})`);
     return res;
   } catch (e) {
     const err = e as GraphError;
     intent.privateReply = { status: 'FAILED', error: err.message, at: new Date().toISOString() };
-    const file = saveEvidence('T9', `private_reply_error_${intent.commentId}`, err.body ?? { message: err.message });
+    const file = saveEvidence('T9', `private_reply_error_${intent.commentId}`, { attempts, error: err.body ?? err.message });
     recordTest('T9', { evidenceFile: file });
     throw e;
   } finally {
@@ -58,10 +75,23 @@ export async function sendPrivateReplyForIntent(intentId: string) {
   }
 }
 
+/** Formes possibles d'un id de commentaire : tel quel, puis préfixé par l'objet vidéo, le live, la Page. */
+function commentIdCandidates(id: string): string[] {
+  if (id.includes('_')) return [id];
+  const prefixes = [state.activeLive?.videoId, state.activeLive?.id, state.selectedPageId];
+  // Préfixe déjà observé sur le commentaire produit publié par la Page (ex. "<videoId>_<commentId>").
+  for (const pc of state.productComments) if (pc.commentId.includes('_')) prefixes.unshift(pc.commentId.split('_')[0]);
+  return [...new Set([id, ...prefixes.filter(Boolean).map((p) => `${p}_${id}`)])];
+}
+
 /** Test de la règle "un seul message par commentaire" : renvoie un 2e message sur le même commentaire. */
 export async function sendSecondPrivateReply(commentId: string) {
   try {
-    const res = await send({ comment_id: commentId }, { text: 'Test : second message privé sur le même commentaire.' });
+    let res: unknown;
+    for (const candidate of commentIdCandidates(commentId)) {
+      try { res = await send({ comment_id: candidate }, { text: 'Test : second message privé sur le même commentaire.' }); break; }
+      catch (e) { if ((e as GraphError).subcode !== 1893060 || candidate === commentIdCandidates(commentId).at(-1)) throw e; }
+    }
     const file = saveEvidence('T9', `second_reply_ACCEPTED_${commentId}`, res);
     recordTest('T9', { evidenceFile: file, note: 'ATTENTION : un 2e message privé sur le même commentaire a été accepté.' });
     return { accepted: true, res };

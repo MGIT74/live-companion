@@ -1,0 +1,17 @@
+services:
+  poc:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3047:3000"
+    volumes:
+      - poc-data:/app/poc/meta-validation/data
+      - poc-evidence:/app/poc/meta-validation/evidence
+
+volumes:
+  poc-data:
+  poc-evidence:

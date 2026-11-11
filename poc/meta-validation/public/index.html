@@ -142,6 +142,17 @@
 </main>
 
 <script>
+const FR = {
+  RESERVED: 'Réservé', WAITLISTED: 'Liste d’attente', NEEDS_REVIEW: 'À valider', REJECTED: 'Rejeté', CONFIRMED: 'Confirmé', CANCELLED: 'Annulé',
+  SENT: 'Envoyé', FAILED: 'Échec',
+  A_TESTER: 'À tester', OK: 'Validé', PARTIEL: 'Partiel', KO: 'Échec',
+  AWAIT_CONFIRM: 'Attend la confirmation', ASK_NAME: 'Demande le nom', ASK_PHONE: 'Demande le téléphone', ASK_ADDRESS: 'Demande l’adresse',
+  ASK_CITY: 'Demande la ville', ASK_PAYMENT: 'Demande le paiement', DONE: 'Commande confirmée',
+  CODE: 'par code produit', PARENT: 'réponse au commentaire produit', MANUAL: 'saisie manuelle',
+  POLL: 'lecture 5 s', SSE: 'temps réel', WEBHOOK: 'webhook',
+  MVOLA: 'MVola', ORANGE_MONEY: 'Orange Money', AIRTEL_MONEY: 'Airtel Money', COD: 'À la livraison', PICKUP: 'Retrait boutique',
+};
+const fr = (k) => FR[k] ?? k;
 let S = null, currentIdx = Number(localStorage.getItem('lc_current') || 0);
 const q = (s) => document.querySelector(s);
 const val = (id) => document.getElementById(id).value;
@@ -208,7 +219,7 @@ function render() {
   q('#autoPR').checked = S.settings.autoPrivateReply;
 
   const st = S.ingestion.stats;
-  q('#ingest').innerHTML = `Polling : <b>${S.ingestion.polling ? 'actif' : 'arrêté'}</b> · SSE : <b>${S.ingestion.sse ? 'actif' : 'arrêté'}</b><br>
+  q('#ingest').innerHTML = `Lecture 5 s : <b>${S.ingestion.polling ? 'active' : 'arrêtée'}</b> · Temps réel : <b>${S.ingestion.sse ? 'actif' : 'arrêté'}</b><br>
     Uniques ${st.total} · SSE ${st.SSE.received} reçus (from ${st.SSE.withFrom}, parent ${st.SSE.withParent}, latence médiane ${st.SSE.medianLatencyMs ?? '—'} ms)
     · Polling ${st.POLL.received} (from ${st.POLL.withFrom}, parent ${st.POLL.withParent}) · Webhook ${st.WEBHOOK.received} (parent ${st.WEBHOOK.withParent})`;
 
@@ -233,13 +244,13 @@ function render() {
   q('#comments').innerHTML = comments.map((c) => {
     const i = intentById[c.intentId];
     return `<div class="item"><b>${esc(c.fromName || 'Anonyme')}</b> ${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}
-      ${i ? `<span class="pill ${i.status}">${i.status}</span>` : ''}
-      <div class="muted">${c.sources.join('+')} ${c.parentId ? '· réponse à <code>' + esc(c.parentId) + '</code>' : ''} ${c.latencyMs != null ? '· ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
+      ${i ? `<span class="pill ${i.status}">${fr(i.status)}</span>` : ''}
+      <div class="muted">${c.sources.map(fr).join(' + ')} ${c.parentId ? '· réponse à <code>' + esc(c.parentId) + '</code>' : ''} ${c.latencyMs != null ? '· ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
   }).join('') || '<p class="muted">Aucun commentaire.</p>';
 
   q('#intents').innerHTML = S.intents.slice().reverse().map((i) => `<div class="item">
-      <span class="pill ${i.status}">${i.status}</span> <b>${i.code ?? '?'} ×${i.quantity}${i.variant ? ' ' + esc(i.variant) : ''}</b> — ${esc(i.authorName || '')} « ${esc(i.rawText)} »
-      <div class="muted">${i.matchMethod}${i.reason ? ' · ' + esc(i.reason) : ''}${i.privateReply ? ' · MP <span class="pill ' + i.privateReply.status + '">' + i.privateReply.status + '</span>' + (i.privateReply.error ? ' ' + esc(i.privateReply.error) : '') : ''}</div>
+      <span class="pill ${i.status}">${fr(i.status)}</span> <b>${i.code ?? '?'} ×${i.quantity}${i.variant ? ' ' + esc(i.variant) : ''}</b> — ${esc(i.authorName || '')} « ${esc(i.rawText)} »
+      <div class="muted">${fr(i.matchMethod)}${i.reason ? ' · ' + esc(i.reason) : ''}${i.privateReply ? ' · Message privé <span class="pill ' + i.privateReply.status + '">' + fr(i.privateReply.status) + '</span>' + (i.privateReply.error ? ' ' + esc(i.privateReply.error) : '') : ''}</div>
       <div class="row">
         ${['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status) ? `<button onclick="resolve('${i.id}')">Valider…</button>` : ''}
         ${!['REJECTED', 'CANCELLED'].includes(i.status) ? `<button onclick="api('/api/intents/${i.id}/resolve',{action:'reject'})">Rejeter</button>` : ''}
@@ -247,15 +258,15 @@ function render() {
         ${i.privateReply?.status === 'SENT' ? `<button onclick="api('/api/comments/${i.commentId}/second-reply').then(r=>toast(r.accepted?'2e message ACCEPTÉ (inattendu)':'2e message refusé (attendu)'))">Tester 2e message</button>` : ''}
       </div></div>`).join('') || '<p class="muted">Aucune réservation.</p>';
 
-  q('#convs').innerHTML = S.conversations.map((c) => `<div class="item"><b>${esc(c.customer.name || 'PSID …' + c.psid.slice(-6))}</b> <span class="pill">${c.step}</span>
-      <div class="muted">${esc([c.customer.phone, c.customer.address, c.customer.city, c.customer.payment].filter(Boolean).join(' · '))}${c.lastInboundAt ? ' · dernier message ' + new Date(c.lastInboundAt).toLocaleTimeString() : ''}</div>
+  q('#convs').innerHTML = S.conversations.map((c) => `<div class="item"><b>${esc(c.customer.name || 'PSID …' + c.psid.slice(-6))}</b> <span class="pill ${c.step === 'DONE' ? 'OK' : ''}">${fr(c.step)}</span>
+      <div class="muted">${esc([c.customer.phone, c.customer.address, c.customer.city, fr(c.customer.payment)].filter(Boolean).join(' · '))}${c.lastInboundAt ? ' · dernier message ' + new Date(c.lastInboundAt).toLocaleTimeString() : ''}</div>
       <div class="row"><input id="m_${c.psid}" placeholder="Message…" style="flex:1"><button onclick="api('/api/conversations/${c.psid}/message',{text:val('m_${c.psid}')})">Envoyer</button></div></div>`).join('') || '<p class="muted">Aucune conversation liée.</p>';
 
   q('#stock').innerHTML = '<table>' + S.stock.map((s) => `<tr><td><b>${s.code}</b></td><td>${s.variants.map((v) => `${esc(v.label)} : <span class="${v.available < 3 ? 'low' : ''}">${v.available}</span> <span class="muted">(${v.reserved} rés.)</span>`).join(' · ')}</td></tr>`).join('') + '</table>';
 
   q('#tests').innerHTML = S.tests.map((t) => `<tr>
       <td>${t.id}</td><td>${esc(t.label)}</td>
-      <td><select id="ts_${t.id}">${['A_TESTER', 'OK', 'PARTIEL', 'KO'].map((s) => `<option ${s === t.status ? 'selected' : ''}>${s}</option>`).join('')}</select> <span class="pill ${t.status}">${t.status}</span></td>
+      <td><select id="ts_${t.id}">${['A_TESTER', 'OK', 'PARTIEL', 'KO'].map((s) => `<option value="${s}" ${s === t.status ? 'selected' : ''}>${fr(s)}</option>`).join('')}</select> <span class="pill ${t.status}">${fr(t.status)}</span></td>
       <td><input id="tn_${t.id}" value="${esc(t.note)}" style="width:100%"></td>
       <td class="muted">${t.evidence.length}</td>
       <td><button onclick="api('/api/tests/${t.id}',{status:val('ts_${t.id}'),note:val('tn_${t.id}')})">Enregistrer</button></td></tr>`).join('');

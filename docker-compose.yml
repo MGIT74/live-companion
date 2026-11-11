@@ -1,6 +1,8 @@
 services:
   poc:
     build: .
+    image: live-companion-poc:latest
+    pull_policy: build   # reconstruit l'image à chaque déploiement
     restart: unless-stopped
     env_file:
       - .env

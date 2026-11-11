@@ -5,7 +5,7 @@ import { state } from './store.ts';
 
 export class GraphError extends Error {
   constructor(public status: number, public body: any) {
-    super(body?.error?.message ?? `Graph API HTTP ${status}`);
+    super(body?.error?.message ?? `Graph API HTTP ${status}${body?.raw ? ' : ' + String(body.raw).slice(0, 200) : ''}`);
   }
   get code(): number | undefined { return this.body?.error?.code; }
   get subcode(): number | undefined { return this.body?.error?.error_subcode; }

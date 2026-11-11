@@ -133,21 +133,31 @@ let sseAbort: AbortController | undefined;
 let sseWanted = false;
 let sseRetry = 0;
 
-async function readSse(liveVideoId: string, withFields: boolean): Promise<void> {
+interface SseVariant { fields: boolean; proof: boolean; label: string }
+const SSE_VARIANTS: SseVariant[] = [
+  { fields: true, proof: true, label: 'fields + appsecret_proof' },
+  { fields: false, proof: true, label: 'sans fields' },
+  { fields: false, proof: false, label: 'sans fields ni appsecret_proof' },
+];
+
+async function readSse(liveVideoId: string, variant: SseVariant, gen: number): Promise<void> {
   const page = selectedPage();
   const url = new URL(`${streamingBase}/${liveVideoId}/live_comments`);
   url.searchParams.set('access_token', page.token);
-  url.searchParams.set('appsecret_proof', appSecretProof(page.token));
+  if (variant.proof) url.searchParams.set('appsecret_proof', appSecretProof(page.token));
   url.searchParams.set('comment_rate', 'one_hundred_per_second');
-  if (withFields) url.searchParams.set('fields', COMMENT_FIELDS);
+  if (variant.fields) url.searchParams.set('fields', COMMENT_FIELDS);
 
   sseAbort = new AbortController();
   const res = await fetch(url, { headers: { Accept: 'text/event-stream' }, signal: sseAbort.signal });
   if (!res.ok || !res.body) {
     const body = await res.text().catch(() => '');
-    throw new GraphError(res.status, safeJson(body));
+    const json = safeJson(body);
+    if (!json?.error) json.error = { message: `HTTP ${res.status} : ${body.slice(0, 300) || '(réponse vide)'}` };
+    throw new GraphError(res.status, json);
   }
-  log('info', `SSE connecté sur ${liveVideoId}${withFields ? '' : ' (sans paramètre fields)'}`);
+  if (gen !== sseGen) { sseAbort.abort(); return; }
+  log('info', `SSE connecté sur ${liveVideoId} (${variant.label})`);
   emit('ingestion', { sse: true, liveVideoId });
   sseRetry = 0;
 
@@ -178,21 +188,33 @@ function safeJson(s: string): any {
   try { return JSON.parse(s); } catch { return { raw: s }; }
 }
 
+let sseGen = 0;
+
 export function startSse(liveVideoId: string) {
   stopSse();
   sseWanted = true;
-  let withFields = true;
+  const gen = ++sseGen; // une seule boucle active à la fois
+  let v = 0;
+  const failures: unknown[] = [];
   const loop = async () => {
-    while (sseWanted) {
+    while (sseWanted && gen === sseGen) {
       try {
-        await readSse(liveVideoId, withFields);
+        await readSse(liveVideoId, SSE_VARIANTS[v], gen);
+        if (gen !== sseGen) return;
         log('warn', 'Flux SSE terminé par le serveur, reconnexion…');
       } catch (e: any) {
-        if (!sseWanted) return;
-        if (e instanceof GraphError && withFields && e.status === 400) {
-          log('warn', `SSE refuse le paramètre fields (${e.message}) : nouvel essai sans.`);
-          withFields = false;
-          continue;
+        if (!sseWanted || gen !== sseGen) return;
+        if (e instanceof GraphError && e.status >= 400 && e.status < 500) {
+          failures.push({ variant: SSE_VARIANTS[v].label, status: e.status, body: e.body });
+          log('warn', `SSE refusé (${SSE_VARIANTS[v].label}) : ${e.message}`);
+          if (++v < SSE_VARIANTS.length) continue;
+          // Toutes les variantes refusées : on arrête et on archive la réponse exacte de Meta.
+          const file = saveEvidence('T5', 'sse_refused', { liveVideoId, failures });
+          recordTest('T5', { status: 'KO', evidenceFile: file, note: `SSE refusé par Meta (${e.message}). Repli : polling.` });
+          log('error', 'SSE abandonné : Meta refuse le flux temps réel pour ce live. Le polling reste actif.');
+          sseWanted = false;
+          emit('ingestion', { sse: false });
+          return;
         }
         log('warn', `SSE erreur : ${e.message}`);
       }
@@ -207,6 +229,7 @@ export function startSse(liveVideoId: string) {
 }
 
 export function stopSse() {
+  sseGen++;
   sseWanted = false;
   sseAbort?.abort();
   sseAbort = undefined;

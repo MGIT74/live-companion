@@ -174,13 +174,23 @@ export function sessionFile(id: string): string | undefined {
   return fs.existsSync(file) ? file : undefined;
 }
 
-/** Réinitialise les données de live (commentaires, intentions, stock), garde la connexion Meta. */
-export function resetLiveData() {
+/**
+ * Réinitialise les données de live (commentaires, intentions), garde la connexion Meta et le catalogue.
+ * commitSales : les réservations confirmées sont vendues (retirées du stock) ; les autres sont libérées.
+ */
+export function resetLiveData(opts: { commitSales?: boolean } = {}) {
+  if (opts.commitSales) {
+    for (const i of state.intents) {
+      if (i.status !== 'CONFIRMED' || !i.code) continue;
+      const v = state.products.find((p) => p.code === i.code)?.variants.find((x) => x.label === i.variant);
+      if (v) v.stock = Math.max(0, v.stock - i.quantity);
+    }
+  }
+  for (const p of state.products) for (const v of p.variants) v.reserved = 0;
   state.comments = {};
   state.intents = [];
   state.productComments = [];
   state.conversations = {};
-  state.products = loadProducts();
   persist();
 }
 

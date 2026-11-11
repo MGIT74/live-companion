@@ -131,6 +131,17 @@
   details > summary::before { content:"›"; display:inline-block; width:16px; transition:transform .15s; }
   details[open] > summary::before { transform:rotate(90deg); }
 
+  dialog { border:0; padding:0; border-radius:18px; background:var(--card); color:var(--ink); width:min(520px,94vw); max-height:90vh; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background:rgba(0,0,0,.35); }
+  dialog form { padding:22px; display:flex; flex-direction:column; gap:12px; }
+  .field { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:500; min-width:0; }
+  .field input { width:100%; min-width:0; }
+  .vrow { display:flex; gap:8px; align-items:center; }
+  .vrow input { min-width:0; }
+  .prod { display:flex; flex-direction:column; gap:10px; }
+  .prods { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
+  .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
     background:rgba(29,29,31,.92); color:#fff; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); backdrop-filter:blur(12px); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
@@ -162,7 +173,7 @@
     <button class="nav" data-view="regie"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie live</button>
     <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Réservations<span class="count" id="navReview"></span></button>
     <button class="nav" data-view="messenger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
-    <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Stock</button>
+    <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits et stock</button>
     <button class="nav" data-view="sessions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Sessions archivées</button>
     <button class="nav" data-view="reglages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Connexion et tests</button>
     <div class="grow"></div>
@@ -200,7 +211,7 @@
             <button class="big primary" onclick="nextProduct()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5v14l9-7-9-7Z"/><path d="M19 5v14"/></svg><span id="nextLabel">Produit suivant</span></button>
           </div>
           <div class="card">
-            <h2 style="margin-bottom:6px">Ordre de passage</h2>
+            <div class="card-head" style="margin-bottom:6px"><h2>Ordre de passage</h2><button class="sm" onclick="show('stock')">Gérer les produits</button></div>
             <div id="playlist" class="playlist"></div>
           </div>
         </div>
@@ -276,8 +287,11 @@
 
     <!-- ================= Stock ================= -->
     <section class="view" id="v-stock" aria-label="Stock">
-      <h1>Stock</h1>
-      <div class="card"><div id="stock" class="table-wrap"></div></div>
+      <div class="top">
+        <div><h1>Produits et stock</h1><div class="muted" style="font-size:15px;margin-top:4px">L’ordre ci-dessous est l’ordre de passage pendant le live.</div></div>
+        <button class="primary" onclick="openProduct()">+ Ajouter un produit</button>
+      </div>
+      <div id="stock" class="prods"></div>
       <div class="card">
         <h2 style="margin-bottom:10px">Tester un commentaire</h2>
         <input id="parseTry" placeholder="Ex. JP01 2 M, +1, misy ve L ?" style="width:100%" oninput="tryParse()" aria-label="Commentaire à tester">
@@ -310,7 +324,7 @@
             <button class="sm" onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents</button>
             <button class="sm" onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur</button>
             <button class="sm" onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
-            <button class="sm danger" onclick="if(confirm('Effacer commentaires, réservations et stock SANS archiver ?'))api('/api/reset-live')">Réinitialiser sans archiver</button>
+            <button class="sm danger" onclick="if(confirm('Effacer les commentaires et réservations SANS archiver ? Vos produits sont gardés.'))api('/api/reset-live')">Réinitialiser sans archiver</button>
           </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th class="hide-sm">Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table></div>
@@ -326,11 +340,30 @@
     <button data-view="regie"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie</button>
     <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Réservations<span id="tabReview"></span></span></button>
     <button data-view="messenger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
-    <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Stock</button>
+    <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits</button>
     <button data-view="reglages"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Réglages</button>
   </nav>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="prodDlg" aria-labelledby="prodTitle">
+  <form method="dialog" onsubmit="event.preventDefault(); saveProduct()">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 id="prodTitle">Nouveau produit</h2><button type="button" class="sm" onclick="q('#prodDlg').close()" aria-label="Fermer">✕</button></div>
+    <div class="vrow" style="align-items:stretch">
+      <label class="field" style="flex:1">Code<input id="pCode" required placeholder="JP01" style="text-transform:uppercase" autocomplete="off"></label>
+      <label class="field" style="flex:1.4">Prix (Ar)<input id="pPrice" required inputmode="numeric" placeholder="35000"></label>
+    </div>
+    <span class="muted" style="margin-top:-4px">Le code est ce que les clients écrivent en commentaire : « JP01 M ».</span>
+    <label class="field">Nom<input id="pName" required placeholder="Jean blanc slim"></label>
+    <div class="field">Tailles ou couleurs, avec la quantité en stock</div>
+    <div id="pVariants" class="stack" style="gap:8px"></div>
+    <button type="button" onclick="addVariantRow()" style="align-self:flex-start">+ Ajouter une taille ou couleur</button>
+    <div id="pErr" class="err" role="alert"></div>
+    <div class="vrow" style="justify-content:space-between;margin-top:4px">
+      <button type="button" class="danger" id="pDelete" onclick="deleteProduct()">Supprimer</button>
+      <button type="submit" class="primary" style="margin-left:auto">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const FR = {
@@ -433,7 +466,7 @@ async function tryParse() {
   q('#parseOut').innerHTML = `<span class="pill ${r.type === 'order' || r.type === 'plus' ? 'OK' : r.type === 'ambiguous' ? 'PARTIEL' : ''}">${kind}</span> <code>${esc(JSON.stringify(r))}</code>`;
 }
 
-function nextProduct() { currentIdx = (currentIdx + 1) % S.products.length; localStorage.setItem('lc_current', currentIdx); render(); }
+function nextProduct() { if (!S.products.length) return; currentIdx = (currentIdx + 1) % S.products.length; localStorage.setItem('lc_current', currentIdx); render(); }
 function setCurrent(i) { currentIdx = i; localStorage.setItem('lc_current', i); render(); }
 
 async function copyComment(code) {
@@ -497,7 +530,7 @@ function render() {
         ${k === i ? '<span class="pill AWAIT_CONFIRM">En cours</span>' : `<button class="sm" onclick="setCurrent(${k})">Présenter</button>`}</div>`;
     }).join('');
   } else {
-    q('#current').innerHTML = '<div class="empty">Aucun produit.</div>'; q('#playlist').innerHTML = '';
+    q('#current').innerHTML = '<div class="empty">Aucun produit. <a href="#" onclick="show(\'stock\');return false">Ajoutez vos produits</a>.</div>'; q('#playlist').innerHTML = ''; q('#curPos').textContent = '';
   }
 
   // Commentaires
@@ -532,10 +565,20 @@ function render() {
       <div class="row"><input id="m_${c.psid}" placeholder="Écrire au client…" style="flex:1" aria-label="Message"><button class="primary" onclick="api('/api/conversations/${c.psid}/message',{text:val('m_${c.psid}')}).then(()=>toast('Message envoyé'))">Envoyer</button></div></div>`).join('') || '<div class="empty">Aucune conversation Messenger pour l’instant.</div>';
 
   // Stock
-  q('#stock').innerHTML = S.stock.length ? '<table><thead><tr><th>Produit</th><th>Disponible par taille ou couleur</th><th class="hide-sm">Réservé</th></tr></thead><tbody>' + S.stock.map((s) => {
-    const p = S.products.find((x) => x.code === s.code);
-    return `<tr><td><span class="code">${esc(s.code)}</span> ${esc(p?.name ?? '')}</td><td>${chips(s.variants)}</td><td class="hide-sm muted">${s.variants.reduce((a, v) => a + v.reserved, 0)}</td></tr>`;
-  }).join('') + '</tbody></table>' : '<div class="empty">Aucun produit.</div>';
+  q('#stock').innerHTML = S.products.length ? S.products.map((p, k) => {
+    const sv = stockOf(p.code), dispo = sv.reduce((a, v) => a + v.available, 0), res = sv.reduce((a, v) => a + v.reserved, 0);
+    return `<div class="card prod">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="code" style="font-size:14px;padding:3px 10px">${esc(p.code)}</span>
+        ${dispo <= 0 ? '<span class="pill KO">Rupture</span>' : sv.some((v) => v.available < 3) ? '<span class="pill PARTIEL">Stock bas</span>' : ''}<span class="muted" style="margin-left:auto">n° ${k + 1}</span></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:16px">${esc(p.name)}</b><b style="white-space:nowrap">${mga(p.priceMga)}</b></div>
+      <div class="row" style="margin:0">${chips(sv)}</div>
+      <span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}${res ? ` · ${res} réservé${res > 1 ? 's' : ''}` : ''}</span>
+      <div class="row" style="margin:0">
+        <button class="sm" onclick="openProduct('${esc(p.code)}')">Modifier</button>
+        <button class="sm" ${k === 0 ? 'disabled' : ''} onclick="api('/api/products/${esc(p.code)}/move',{dir:'up'})" aria-label="Monter ${esc(p.code)}">↑</button>
+        <button class="sm" ${k === S.products.length - 1 ? 'disabled' : ''} onclick="api('/api/products/${esc(p.code)}/move',{dir:'down'})" aria-label="Descendre ${esc(p.code)}">↓</button>
+      </div></div>`;
+  }).join('') : '<div class="card empty" style="grid-column:1/-1">Aucun produit. Ajoutez ce que vous allez vendre pendant le live.</div>';
 
   // Tests
   q('#tests').innerHTML = S.tests.map((t) => `<tr>
@@ -545,6 +588,43 @@ function render() {
       <td class="muted hide-sm">${t.evidence.length}</td>
       <td><button class="sm" onclick="api('/api/tests/${t.id}',{status:val('ts_${t.id}'),note:val('tn_${t.id}')}).then(()=>toast('Test ${t.id} enregistré'))">Enregistrer</button></td></tr>`).join('');
   q('#urls').innerHTML = `Adresse de retour Facebook : <code>${esc(S.redirectUri)}</code><br>Webhook : <code>${esc(S.webhookUrl)}</code>`;
+}
+
+// ---------- Produits : ajout et modification
+let editingCode = null;
+function addVariantRow(label = '', stock = '') {
+  const row = document.createElement('div');
+  row.className = 'vrow';
+  row.innerHTML = `<input class="vl" placeholder="Taille ou couleur (ex. M)" value="${esc(label)}" style="flex:2" aria-label="Taille ou couleur">
+    <input class="vs" placeholder="Stock" inputmode="numeric" value="${esc(stock)}" style="flex:1" aria-label="Quantité en stock">
+    <button type="button" class="sm" onclick="this.parentElement.remove()" aria-label="Retirer">✕</button>`;
+  q('#pVariants').appendChild(row);
+}
+function openProduct(code) {
+  const p = code ? S.products.find((x) => x.code === code) : null;
+  editingCode = p ? p.code : null;
+  q('#prodTitle').textContent = p ? `Modifier ${p.code}` : 'Nouveau produit';
+  q('#pCode').value = p?.code ?? ''; q('#pName').value = p?.name ?? ''; q('#pPrice').value = p?.priceMga ?? '';
+  q('#pVariants').innerHTML = ''; q('#pErr').textContent = '';
+  (p ? p.variants : [{ label: '', stock: '' }]).forEach((v) => addVariantRow(v.label, v.stock));
+  q('#pDelete').style.display = p ? '' : 'none';
+  q('#prodDlg').showModal();
+}
+async function saveProduct() {
+  const variants = [...q('#pVariants').querySelectorAll('.vrow')].map((r) => ({ label: r.querySelector('.vl').value.trim(), stock: Number(r.querySelector('.vs').value.replace(/\D/g, '') || 0) }))
+    .filter((v, i, all) => v.label || all.length === 1);
+  const body = { originalCode: editingCode || undefined, code: q('#pCode').value, name: q('#pName').value, priceMga: Number(q('#pPrice').value.replace(/\D/g, '')), variants };
+  const res = await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { q('#pErr').textContent = j.error || 'Erreur'; return; }
+  q('#prodDlg').close(); toast(editingCode ? `${j.code} modifié` : `${j.code} ajouté au catalogue`); refresh();
+}
+async function deleteProduct() {
+  if (!editingCode || !confirm(`Supprimer ${editingCode} du catalogue ?`)) return;
+  const res = await fetch(`/api/products/${editingCode}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { q('#pErr').textContent = j.error || 'Erreur'; return; }
+  q('#prodDlg').close(); toast(`${editingCode} supprimé`); refresh();
 }
 
 function resolve(id) {

@@ -10,6 +10,7 @@ import { ingestionStats, ingestionStatus, pollOnce, reparseComments, startPollin
 import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct } from './reservations.ts';
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
+import { deleteProduct, moveProduct, saveProduct } from './catalog.ts';
 import { archiveSession, listSessions, persist, recordTest, resetLiveData, sessionFile, state, TESTS, type TestStatus } from './store.ts';
 
 const app = express();
@@ -196,6 +197,11 @@ app.post('/api/ingestion/sse/stop', wrap(() => stopSse()));
 app.get('/api/ingestion/stats', wrap(() => ingestionStats()));
 app.post('/api/comments/reparse', wrap(() => reparseComments()));
 
+// Catalogue : ajout, modification, suppression, ordre de passage
+app.post('/api/products', wrap((req) => saveProduct(req.body)));
+app.post('/api/products/:code/delete', wrap((req) => { deleteProduct(req.params.code); }));
+app.post('/api/products/:code/move', wrap((req) => { moveProduct(req.params.code, req.body.dir === 'up' ? 'up' : 'down'); }));
+
 // Produits / commentaire produit
 app.get('/api/products/:code/comment', wrap((req) => {
   const p = findProduct(req.params.code);
@@ -311,7 +317,7 @@ app.post('/api/reset-live', wrap(() => { stopPolling(); stopSse(); resetLiveData
 // Nouvelle session : archive la session en cours puis repart à zéro (connexion Facebook et tests conservés)
 app.post('/api/sessions/new', wrap((req) => {
   const summary = archiveSession(String(req.body.name ?? '').slice(0, 80));
-  stopPolling(); stopSse(); resetLiveData(); state.activeLive = undefined; persist();
+  stopPolling(); stopSse(); resetLiveData({ commitSales: true }); state.activeLive = undefined; persist();
   log('info', `Session « ${summary.name} » archivée (${summary.comments} commentaires, ${summary.intents} réservations). Nouvelle session prête.`);
   return summary;
 }));

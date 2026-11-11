@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+poc/meta-validation/data/
+poc/meta-validation/evidence/
+*.log
+.DS_Store

@@ -1,0 +1,27 @@
+[
+  {
+    "code": "JP01",
+    "name": "Jean blanc",
+    "priceMga": 35000,
+    "variants": [
+      { "label": "S", "stock": 3 },
+      { "label": "M", "stock": 5 },
+      { "label": "L", "stock": 4 }
+    ]
+  },
+  {
+    "code": "RB02",
+    "name": "Robe fleurie",
+    "priceMga": 45000,
+    "variants": [
+      { "label": "Rouge", "stock": 2 },
+      { "label": "Noir", "stock": 2 }
+    ]
+  },
+  {
+    "code": "SAC10",
+    "name": "Sac en raphia",
+    "priceMga": 25000,
+    "variants": [{ "label": "Unique", "stock": 1 }]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "name": "@live-companion/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Schéma MySQL/Prisma cible (non utilisé par la PoC)",
+  "scripts": {
+    "validate": "npx prisma@5 validate --schema prisma/schema.prisma"
+  }
+}

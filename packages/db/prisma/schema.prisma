@@ -1,0 +1,529 @@
+// Schéma cible de la version produit (MySQL 8 + Prisma).
+// Non utilisé par la PoC (poc/meta-validation), qui stocke ses données dans un fichier JSON.
+// Conventions : BigInt interne + publicId (ULID) exposé ; montants en ariary (Int) ; shopId sur toute table métier.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identité et boutiques ----------
+model User {
+  id              BigInt   @id @default(autoincrement())
+  publicId        String   @unique @db.Char(26)
+  phone           String?  @unique @db.VarChar(20)
+  email           String?  @unique @db.VarChar(191)
+  passwordHash    String?
+  fullName        String   @db.VarChar(120)
+  locale          String   @default("fr") @db.VarChar(5) // fr | mg
+  isPlatformAdmin Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  memberships     ShopMember[]
+  sellerProfile   SellerProfile?
+
+  @@map("users")
+}
+
+model Shop {
+  id                    BigInt     @id @default(autoincrement())
+  publicId              String     @unique @db.Char(26)
+  slug                  String     @unique @db.VarChar(80)
+  name                  String     @db.VarChar(120)
+  city                  String?    @db.VarChar(80)
+  status                ShopStatus @default(ACTIVE)
+  reservationTtlMinutes Int        @default(1440)
+  createdAt             DateTime   @default(now())
+  members               ShopMember[]
+
+  @@map("shops")
+}
+
+enum ShopStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+model ShopMember {
+  id     BigInt   @id @default(autoincrement())
+  shopId BigInt
+  userId BigInt
+  role   ShopRole
+  shop   Shop     @relation(fields: [shopId], references: [id])
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@unique([shopId, userId])
+  @@map("shop_members")
+}
+
+enum ShopRole {
+  OWNER
+  MANAGER
+  LIVE_ASSISTANT
+  SALES
+}
+
+model SellerProfile {
+  id        BigInt  @id @default(autoincrement())
+  userId    BigInt  @unique
+  nif       String? @db.VarChar(30)
+  stat      String? @db.VarChar(30)
+  kycStatus String  @default("PENDING") @db.VarChar(20)
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@map("seller_profiles")
+}
+
+model Customer {
+  id          BigInt   @id @default(autoincrement())
+  shopId      BigInt
+  fullName    String?  @db.VarChar(120)
+  phone       String?  @db.VarChar(20)
+  address     String?  @db.VarChar(255)
+  city        String?  @db.VarChar(80)
+  fbAsid      String?  @db.VarChar(40)
+  notes       String?  @db.Text
+  cancelCount Int      @default(0)
+  isBlocked   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([shopId, phone])
+  @@index([shopId, fbAsid])
+  @@map("customers")
+}
+
+// ---------- Catalogue et stock ----------
+model Product {
+  id          BigInt    @id @default(autoincrement())
+  publicId    String    @unique @db.Char(26)
+  shopId      BigInt
+  code        String    @db.VarChar(12)
+  name        String    @db.VarChar(160)
+  description String?   @db.Text
+  priceMga    Int
+  isPublished Boolean   @default(true)
+  archivedAt  DateTime?
+  variants    ProductVariant[]
+  images      ProductImage[]
+
+  @@unique([shopId, code])
+  @@map("products")
+}
+
+model ProductVariant {
+  id          BigInt  @id @default(autoincrement())
+  shopId      BigInt
+  productId   BigInt
+  label       String  @db.VarChar(60)
+  attributes  Json
+  priceMga    Int?
+  stockOnHand Int     @default(0)
+  reserved    Int     @default(0) // invariant : reserved <= stockOnHand (CHECK en migration SQL)
+  version     Int     @default(0)
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@unique([productId, label])
+  @@index([shopId])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id         BigInt  @id @default(autoincrement())
+  shopId     BigInt
+  productId  BigInt
+  storageKey String  @db.VarChar(255)
+  position   Int     @default(0)
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@map("product_images")
+}
+
+model InventoryMovement {
+  id          BigInt                @id @default(autoincrement())
+  shopId      BigInt
+  variantId   BigInt
+  type        InventoryMovementType
+  quantity    Int
+  refType     String?               @db.VarChar(30)
+  refId       BigInt?
+  actorUserId BigInt?
+  createdAt   DateTime              @default(now())
+
+  @@index([shopId, variantId, createdAt])
+  @@map("inventory_movements")
+}
+
+enum InventoryMovementType {
+  RESTOCK
+  ADJUST
+  RESERVE
+  RELEASE
+  SALE
+  RETURN
+}
+
+// ---------- Lives ----------
+model LiveSession {
+  id                BigInt     @id @default(autoincrement())
+  publicId          String     @unique @db.Char(26)
+  shopId            BigInt
+  pageConnectionId  BigInt?
+  platform          String     @default("FACEBOOK") @db.VarChar(16)
+  fbLiveVideoId     String?    @db.VarChar(40)
+  title             String     @db.VarChar(160)
+  mode              LiveMode   @default(MANUAL_ASSISTED)
+  status            LiveStatus @default(DRAFT)
+  currentItemId     BigInt?
+  lastCommentCursor String?    @db.VarChar(255)
+  startedAt         DateTime?
+  endedAt           DateTime?
+  items             LiveSessionProduct[]
+
+  @@unique([shopId, fbLiveVideoId])
+  @@index([shopId, status])
+  @@map("live_sessions")
+}
+
+enum LiveMode {
+  AUTOMATIC
+  SEMI_AUTOMATIC
+  MANUAL_ASSISTED
+}
+
+enum LiveStatus {
+  DRAFT
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+model LiveSessionProduct {
+  id            BigInt       @id @default(autoincrement())
+  shopId        BigInt
+  liveSessionId BigInt
+  productId     BigInt
+  position      Int
+  commentText   String?      @db.Text
+  fbCommentId   String?      @db.VarChar(80)
+  publishState  PublishState @default(NOT_PUBLISHED)
+  pinState      PinState     @default(NOT_PINNED)
+  presentedAt   DateTime?
+  liveSession   LiveSession  @relation(fields: [liveSessionId], references: [id])
+
+  @@unique([liveSessionId, position])
+  @@index([fbCommentId])
+  @@map("live_session_products")
+}
+
+enum PublishState {
+  NOT_PUBLISHED
+  COPIED
+  PUBLISHED_API
+  PUBLISHED_MANUAL
+  FAILED
+}
+
+enum PinState {
+  NOT_PINNED
+  PINNED_MANUAL
+  UNPINNED
+}
+
+// ---------- Meta ----------
+model FacebookPageConnection {
+  id                BigInt    @id @default(autoincrement())
+  shopId            BigInt
+  fbPageId          String    @db.VarChar(40)
+  pageName          String    @db.VarChar(160)
+  accessTokenEnc    Bytes     @db.VarBinary(2048)
+  tokenKeyVersion   Int
+  grantedScopes     Json
+  status            String    @default("ACTIVE") @db.VarChar(20)
+  connectedByUserId BigInt
+  lastCheckedAt     DateTime?
+
+  @@unique([shopId, fbPageId])
+  @@map("facebook_page_connections")
+}
+
+model FacebookLiveEvent {
+  id            BigInt   @id @default(autoincrement())
+  shopId        BigInt
+  liveSessionId BigInt?
+  source        String   @db.VarChar(16) // SSE | POLL | WEBHOOK
+  payload       Json
+  receivedAt    DateTime @default(now())
+
+  @@index([shopId, receivedAt])
+  @@map("facebook_live_events")
+}
+
+model FacebookLiveComment {
+  id            BigInt      @id @default(autoincrement())
+  shopId        BigInt
+  liveSessionId BigInt
+  fbCommentId   String      @db.VarChar(80)
+  fbParentId    String?     @db.VarChar(80)
+  fbAuthorId    String?     @db.VarChar(40)
+  authorName    String?     @db.VarChar(160)
+  message       String      @db.Text
+  createdTime   DateTime
+  firstSource   String      @db.VarChar(16)
+  parseStatus   ParseStatus @default(PENDING)
+
+  @@unique([shopId, fbCommentId])
+  @@index([liveSessionId, createdTime])
+  @@map("facebook_live_comments")
+}
+
+enum ParseStatus {
+  PENDING
+  NOT_AN_ORDER
+  INTENT
+  AMBIGUOUS
+  IGNORED
+}
+
+model LivePurchaseIntent {
+  id               BigInt       @id @default(autoincrement())
+  shopId           BigInt
+  liveSessionId    BigInt
+  commentId        BigInt?      @unique
+  customerId       BigInt?
+  productId        BigInt?
+  variantId        BigInt?
+  quantity         Int
+  rawText          String       @db.Text
+  matchMethod      String       @db.VarChar(20) // CODE | PARENT | MANUAL
+  confidence       Int
+  status           IntentStatus @default(NEW)
+  reviewedByUserId BigInt?
+  createdAt        DateTime     @default(now())
+
+  @@index([liveSessionId, status])
+  @@map("live_purchase_intents")
+}
+
+enum IntentStatus {
+  NEW
+  NEEDS_REVIEW
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+}
+
+model LiveReservation {
+  id           BigInt            @id @default(autoincrement())
+  publicId     String            @unique @db.Char(26)
+  shopId       BigInt
+  intentId     BigInt            @unique
+  variantId    BigInt
+  customerId   BigInt?
+  quantity     Int
+  unitPriceMga Int
+  status       ReservationStatus @default(HELD)
+  expiresAt    DateTime
+  orderId      BigInt?
+  createdAt    DateTime          @default(now())
+
+  @@index([shopId, status, expiresAt])
+  @@map("live_reservations")
+}
+
+enum ReservationStatus {
+  HELD
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+  CONVERTED
+}
+
+model LiveWaitlistEntry {
+  id        BigInt @id @default(autoincrement())
+  shopId    BigInt
+  variantId BigInt
+  intentId  BigInt @unique
+  position  Int
+  status    String @default("WAITING") @db.VarChar(20)
+
+  @@index([variantId, status, position])
+  @@map("live_waitlist_entries")
+}
+
+// ---------- Messenger ----------
+model MessengerContact {
+  id              BigInt  @id @default(autoincrement())
+  shopId          BigInt
+  fbPageId        String  @db.VarChar(40)
+  psid            String  @db.VarChar(40)
+  customerId      BigInt?
+  displayName     String? @db.VarChar(160)
+  linkedVia       String? @db.VarChar(30) // PRIVATE_REPLY | MANUAL
+  linkedCommentId BigInt?
+
+  @@unique([fbPageId, psid])
+  @@map("messenger_contacts")
+}
+
+model MessengerConversation {
+  id             BigInt    @id @default(autoincrement())
+  shopId         BigInt
+  contactId      BigInt    @unique
+  assignedUserId BigInt?
+  lastInboundAt  DateTime?
+  lastMessageAt  DateTime?
+  unreadCount    Int       @default(0)
+  status         String    @default("OPEN") @db.VarChar(20)
+
+  @@index([shopId, lastMessageAt])
+  @@map("messenger_conversations")
+}
+
+model MessengerMessage {
+  id               BigInt   @id @default(autoincrement())
+  shopId           BigInt
+  conversationId   BigInt
+  mid              String?  @unique @db.VarChar(191)
+  direction        String   @db.VarChar(8) // IN | OUT
+  kind             String   @db.VarChar(20) // TEXT | QUICK_REPLY | PRIVATE_REPLY | TEMPLATE
+  replyToCommentId String?  @db.VarChar(80)
+  text             String?  @db.Text
+  payload          Json?
+  sentByUserId     BigInt?
+  deliveryStatus   String   @default("PENDING") @db.VarChar(20)
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messenger_messages")
+}
+
+// ---------- Commandes, paiements, livraisons ----------
+model Order {
+  id              BigInt      @id @default(autoincrement())
+  publicId        String      @unique @db.Char(26)
+  shopId          BigInt
+  number          String      @db.VarChar(20)
+  customerId      BigInt
+  channel         String      @db.VarChar(16) // LIVE | MARKETPLACE | MANUAL
+  liveSessionId   BigInt?
+  status          OrderStatus @default(PENDING_CONFIRMATION)
+  subtotalMga     Int
+  shippingMga     Int         @default(0)
+  totalMga        Int
+  deliveryAddress String?     @db.VarChar(255)
+  deliveryCity    String?     @db.VarChar(80)
+  createdAt       DateTime    @default(now())
+  items           OrderItem[]
+
+  @@unique([shopId, number])
+  @@index([shopId, status, createdAt])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  AWAITING_PAYMENT
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id            BigInt  @id @default(autoincrement())
+  shopId        BigInt
+  orderId       BigInt
+  variantId     BigInt
+  reservationId BigInt?
+  nameSnapshot  String  @db.VarChar(200)
+  quantity      Int
+  unitPriceMga  Int
+  order         Order   @relation(fields: [orderId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                BigInt        @id @default(autoincrement())
+  shopId            BigInt
+  orderId           BigInt
+  method            PaymentMethod
+  amountMga         Int
+  status            PaymentStatus @default(PENDING)
+  providerRef       String?       @db.VarChar(80)
+  confirmedByUserId BigInt?
+  createdAt         DateTime      @default(now())
+
+  @@index([shopId, status])
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  MVOLA
+  ORANGE_MONEY
+  AIRTEL_MONEY
+  CASH_ON_DELIVERY
+  PICKUP
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+model Shipment {
+  id           BigInt         @id @default(autoincrement())
+  shopId       BigInt
+  orderId      BigInt
+  method       String         @db.VarChar(20)
+  courierName  String?        @db.VarChar(120)
+  trackingNote String?        @db.VarChar(255)
+  status       ShipmentStatus @default(PENDING)
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+
+  @@map("shipments")
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+// ---------- Plateforme ----------
+model Subscription {
+  id               BigInt   @id @default(autoincrement())
+  shopId           BigInt
+  plan             String   @db.VarChar(30)
+  status           String   @db.VarChar(20)
+  currentPeriodEnd DateTime
+
+  @@map("subscriptions")
+}
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  shopId      BigInt?
+  actorUserId BigInt?
+  action      String   @db.VarChar(60)
+  entityType  String   @db.VarChar(40)
+  entityId    BigInt?
+  data        Json?
+  ip          String?  @db.VarChar(45)
+  createdAt   DateTime @default(now())
+
+  @@index([shopId, createdAt])
+  @@map("audit_logs")
+}

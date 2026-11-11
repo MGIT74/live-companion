@@ -167,6 +167,14 @@ app.get('/api/lives', wrap(async () => {
   return res;
 }));
 
+// Repli sans live : dernières publications de la Page (les tests T4, T6–T10 marchent aussi sur un post)
+app.get('/api/posts', wrap(async () => {
+  const page = selectedPage();
+  return graph<{ data: any[] }>('GET', `${page.id}/posts`, page.token, {
+    fields: 'id,message,created_time,permalink_url', limit: 5,
+  });
+}));
+
 app.post('/api/lives/select', wrap((req) => {
   const { id, videoId, title } = req.body;
   if (!id) throw new Error('id requis');

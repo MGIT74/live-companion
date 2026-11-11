@@ -46,8 +46,10 @@ export function receiveWebhook(req: Request, res: Response) {
       const live = state.activeLive;
       if (!live) continue;
       // post_id = "<pageId>_<objectId>". On n'ingère que les commentaires du live suivi.
-      const objectId = String(v.post_id ?? '').split('_').pop();
-      if (objectId !== live.id && objectId !== live.videoId) continue;
+      const postId = String(v.post_id ?? '');
+      const objectId = postId.split('_').pop();
+      const targets = [live.id, live.videoId].filter(Boolean) as string[];
+      if (!targets.some((t) => t === postId || t === objectId || t.split('_').pop() === objectId)) continue;
       ingestComment({
         id: v.comment_id,
         message: v.message,

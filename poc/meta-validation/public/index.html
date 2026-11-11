@@ -58,6 +58,8 @@
     <h2>1 · Live Facebook <span class="muted">T3</span></h2>
     <div class="row"><button onclick="detectLive()">Détecter le live actif</button></div>
     <div id="lives" class="muted"></div>
+    <div class="row"><button onclick="listPosts()">Pas de live ? Utiliser une publication</button></div>
+    <div id="posts" class="muted"></div>
     <div class="row">
       <input id="manualLive" placeholder="ou id du live_video" style="flex:1">
       <button onclick="api('/api/lives/select',{id:val('manualLive')})">Utiliser</button>
@@ -155,6 +157,11 @@ async function detectLive() {
   const r = await get('/api/lives');
   q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button onclick='api("/api/lives/select",${JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title })})'>Suivre ce live</button></div>`).join('') : 'Aucun live en cours sur la Page.';
   refresh();
+}
+
+async function listPosts() {
+  const r = await get('/api/posts');
+  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span>${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString()}</span> <button onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + (p.message || '').slice(0, 30) })})'>Suivre cette publication</button></div>`).join('') : 'Aucune publication sur la Page : publiez-en une puis réessayez.';
 }
 
 async function tryParse() { const t = val('parseTry'); q('#parseOut').textContent = t ? JSON.stringify(await get('/api/parser?text=' + encodeURIComponent(t))) : ''; }

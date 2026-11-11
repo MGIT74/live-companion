@@ -121,11 +121,17 @@
       <span class="row" style="margin:0">
         <button onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents (T7)</button>
         <button onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur (T8)</button>
-        <button onclick="if(confirm('Effacer commentaires, réservations et stock ?'))api('/api/reset-live')">Réinitialiser le live</button>
+        <button class="primary" onclick="newSession()">Nouvelle session (archiver)</button>
+        <button onclick="if(confirm('Effacer commentaires, réservations et stock SANS archiver ?'))api('/api/reset-live')">Réinitialiser sans archiver</button>
       </span>
     </h2>
     <table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th>Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table>
     <p class="muted" id="urls"></p>
+  </section>
+
+  <section class="wide">
+    <h2>Sessions archivées</h2>
+    <div id="sessions" class="muted">Aucune session archivée.</div>
   </section>
 
   <section class="wide">
@@ -157,6 +163,20 @@ async function detectLive() {
   const r = await get('/api/lives');
   q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button onclick='api("/api/lives/select",${JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title })})'>Suivre ce live</button></div>`).join('') : 'Aucun live en cours sur la Page.';
   refresh();
+}
+
+async function newSession() {
+  const name = prompt('Nom de la session à archiver (ex. Live 11 nov — Hands Graphic) :', S?.activeLive?.title || '');
+  if (name === null) return;
+  const s = await api('/api/sessions/new', { name });
+  toast(`Session « ${s.name} » archivée. Nouvelle session prête.`);
+  loadSessions();
+}
+async function loadSessions() {
+  const list = await get('/api/sessions');
+  q('#sessions').innerHTML = list.length ? '<table><tr><th>Session</th><th>Archivée le</th><th>Commentaires</th><th>Réservations</th><th>Confirmées</th><th></th></tr>' +
+    list.map((s) => `<tr><td><b>${esc(s.name)}</b></td><td>${new Date(s.archivedAt).toLocaleString()}</td><td>${s.comments}</td><td>${s.intents}</td><td>${s.confirmed}</td><td><a href="/api/sessions/${s.id}/download">Télécharger</a></td></tr>`).join('') + '</table>'
+    : 'Aucune session archivée.';
 }
 
 async function listPosts() {
@@ -255,6 +275,7 @@ q('#pageSel').onchange = (e) => e.target.value && api('/api/pages/select', { pag
 const es = new EventSource('/events');
 es.onmessage = (m) => { const e = JSON.parse(m.data); if (e.type === 'log') logLine(e.data.message); refresh(); };
 refresh();
+loadSessions();
 </script>
 </body>
 </html>

@@ -10,7 +10,7 @@ import { ingestionStats, ingestionStatus, pollOnce, startPolling, startSse, stop
 import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct } from './reservations.ts';
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
-import { persist, recordTest, resetLiveData, state, TESTS, type TestStatus } from './store.ts';
+import { archiveSession, listSessions, persist, recordTest, resetLiveData, sessionFile, state, TESTS, type TestStatus } from './store.ts';
 
 const app = express();
 app.set('trust proxy', true);
@@ -306,6 +306,20 @@ app.post('/api/settings', wrap((req) => {
 }));
 
 app.post('/api/reset-live', wrap(() => { stopPolling(); stopSse(); resetLiveData(); state.activeLive = undefined; persist(); }));
+
+// Nouvelle session : archive la session en cours puis repart à zéro (connexion Facebook et tests conservés)
+app.post('/api/sessions/new', wrap((req) => {
+  const summary = archiveSession(String(req.body.name ?? '').slice(0, 80));
+  stopPolling(); stopSse(); resetLiveData(); state.activeLive = undefined; persist();
+  log('info', `Session « ${summary.name} » archivée (${summary.comments} commentaires, ${summary.intents} réservations). Nouvelle session prête.`);
+  return summary;
+}));
+app.get('/api/sessions', wrap(() => listSessions()));
+app.get('/api/sessions/:id/download', (req, res) => {
+  const file = sessionFile(req.params.id);
+  if (!file) return res.status(404).json({ error: 'Session introuvable' });
+  res.download(file, `live-companion-session-${req.params.id}.json`);
+});
 
 // Rapport Markdown à coller dans docs/meta-capabilities.md
 app.get('/report.md', (_req, res) => {

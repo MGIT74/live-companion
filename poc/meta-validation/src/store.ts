@@ -126,6 +126,52 @@ export function recordTest(id: string, patch: Partial<TestResult> & { evidenceFi
   persist();
 }
 
+// ---------------------------------------------------------------- Sessions archivées
+const sessionsDir = path.join(config.dataDir, 'sessions');
+fs.mkdirSync(sessionsDir, { recursive: true });
+
+export interface SessionSummary { id: string; name: string; archivedAt: string; live?: string; comments: number; intents: number; confirmed: number }
+
+/** Archive la session en cours (data/sessions/<id>.json, dans le volume persistant). */
+export function archiveSession(name: string): SessionSummary {
+  const archivedAt = new Date().toISOString();
+  const id = archivedAt.replace(/[:.]/g, '-');
+  const summary: SessionSummary = {
+    id,
+    name: name || state.activeLive?.title || 'Session',
+    archivedAt,
+    live: state.activeLive?.id,
+    comments: Object.keys(state.comments).length,
+    intents: state.intents.length,
+    confirmed: state.intents.filter((i) => i.status === 'CONFIRMED').length,
+  };
+  const snapshot = {
+    summary,
+    pageId: state.selectedPageId,
+    activeLive: state.activeLive,
+    products: state.products,
+    comments: state.comments,
+    intents: state.intents,
+    productComments: state.productComments,
+    conversations: state.conversations,
+  };
+  fs.writeFileSync(path.join(sessionsDir, `${id}.json`), JSON.stringify(snapshot, null, 2));
+  return summary;
+}
+
+export function listSessions(): SessionSummary[] {
+  return fs.readdirSync(sessionsDir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => JSON.parse(fs.readFileSync(path.join(sessionsDir, f), 'utf8')).summary as SessionSummary)
+    .sort((a, b) => b.archivedAt.localeCompare(a.archivedAt));
+}
+
+export function sessionFile(id: string): string | undefined {
+  if (!/^[\w-]+$/.test(id)) return undefined;
+  const file = path.join(sessionsDir, `${id}.json`);
+  return fs.existsSync(file) ? file : undefined;
+}
+
 /** Réinitialise les données de live (commentaires, intentions, stock), garde la connexion Meta. */
 export function resetLiveData() {
   state.comments = {};

@@ -166,6 +166,11 @@ describe('Live : commentaires → commandes', () => {
   it('rattache un « +1 » à son commentaire parent, sinon demande une validation', async () => {
     const plus = await comment({ fbCommentId: 'c3', parentId: 'post_100', authorId: 'fb_hery', authorName: 'Hery', message: '+1 L' });
     expect(plus.body.outcome.status).toBe('ORDERED');
+    // Facebook ajoute le nom tagué quand on clique sur « Répondre ».
+    const tagged = await comment({ fbCommentId: 'c3b', parentId: 'post_100', authorId: 'fb_soa', authorName: 'Soa', message: 'Boutique B +1 M', messageTags: [{ offset: 0, length: 10, name: 'Boutique B' }] });
+    expect(tagged.body.outcome.status).toBe('ORDERED');
+    const untagged = await comment({ fbCommentId: 'c3c', parentId: 'post_100', authorId: 'fb_mamy', authorName: 'Mamy', message: 'Boutique B +1 S' });
+    expect(untagged.body.outcome.status).toBe('ORDERED');
     const orphan = await comment({ fbCommentId: 'c4', authorId: 'fb_lala', authorName: 'Lala', message: '+1' });
     expect(orphan.body.outcome.status).toBe('NEEDS_REVIEW');
     const noSize = await comment({ fbCommentId: 'c5', authorId: 'fb_lala', authorName: 'Lala', message: 'JP01 +1' });
@@ -197,8 +202,8 @@ describe('Live : commentaires → commandes', () => {
 
   it('donne le bilan du live et les statistiques de la boutique', async () => {
     const lv = await call(B, 'GET', shop(B, `/lives/${live.id}`));
-    expect(lv.body.stats.pending).toBe(4); // Rova, Hery, Lala, Fara
-    expect(lv.body.stats.comments).toBe(8); // 7 commentaires + 1 saisie rapide
+    expect(lv.body.stats.pending).toBe(6); // Rova, Hery, Soa, Mamy, Lala, Fara
+    expect(lv.body.stats.comments).toBe(10); // 9 commentaires + 1 saisie rapide
     expect(lv.body.items[0].commentText).toMatch(/JP01 — PRODUIT JP01/);
 
     // Rova confirme et paie.
@@ -208,7 +213,7 @@ describe('Live : commentaires → commandes', () => {
     await call(B, 'POST', shop(B, `/orders/${rova.id}/payments`), { method: 'ORANGE_MONEY', amountMga: 60000, confirmed: true });
 
     const ov = await call(B, 'GET', shop(B, '/stats/overview'));
-    expect(ov.body).toMatchObject({ revenueMga: 60000, paidMga: 60000, orders: 1, pendingOrders: 3, itemsSold: 2 });
+    expect(ov.body).toMatchObject({ revenueMga: 60000, paidMga: 60000, orders: 1, pendingOrders: 5, itemsSold: 2 });
     const top = await call(B, 'GET', shop(B, '/stats/top-products'));
     expect(top.body.map((x: { code: string }) => x.code).sort()).toEqual(['JP01', 'SAC10']);
     const lives = await call(B, 'GET', shop(B, '/stats/lives'));

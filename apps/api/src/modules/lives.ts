@@ -143,6 +143,8 @@ export async function liveRoutes(app: FastifyInstance) {
         fbCommentId: z.string().max(80).optional(), parentId: z.string().max(80).optional(), authorId: z.string().max(40).optional(),
         authorName: z.string().max(160).optional(), message: z.string().min(1).max(8000), createdTime: z.coerce.date().optional(),
         source: z.enum(['SSE', 'POLL', 'WEBHOOK', 'MANUAL']).optional(), fromPage: z.boolean().optional(),
+        messageTags: z.array(z.object({ offset: z.number().int().optional(), length: z.number().int().optional(), name: z.string().optional() })).max(50).optional(),
+        mentionNames: z.array(z.string().max(160)).max(10).optional(),
       }) },
     }, async (req) => {
       can(req, 'lives.write');

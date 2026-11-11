@@ -160,6 +160,35 @@ export function parseOrder(raw: string, options: ParseOptions = {}): ParseResult
   return { type: 'none', reason: isQuestion ? 'question' : 'no_signal' };
 }
 
+export interface MessageTag { offset?: number; length?: number; name?: string }
+
+/**
+ * Retire les mentions qu'ajoute Facebook quand on clique sur « Répondre »
+ * (« Hands Graphic +1 » → « +1 »).
+ *  1. Avec les message_tags de l'API (offset/length en unités UTF-16, comme les chaînes JS).
+ *  2. Sinon, retire un nom connu (Page, auteur du commentaire parent) placé en début de message.
+ */
+export function stripMentions(message: string, tags: MessageTag[] = [], knownNames: string[] = []): string {
+  let out = message;
+  const spans = tags
+    .filter((t) => Number.isInteger(t.offset) && Number.isInteger(t.length) && t.length! > 0)
+    .sort((a, b) => b.offset! - a.offset!);
+  for (const t of spans) {
+    if (t.offset! + t.length! <= out.length) out = out.slice(0, t.offset!) + out.slice(t.offset! + t.length!);
+  }
+  if (!spans.length) {
+    const lower = normalize(out);
+    for (const name of knownNames.filter(Boolean).sort((a, b) => b.length - a.length)) {
+      const n = normalize(name);
+      if (n && lower.startsWith(n) && /^[\s,:@-]*/.test(lower.slice(n.length))) {
+        out = out.slice(name.length);
+        break;
+      }
+    }
+  }
+  return out.replace(/^[\s,:@-]+/, '').replace(/\s+/g, ' ').trim();
+}
+
 /** Texte du commentaire produit publié/épinglé pendant le live. */
 export function formatProductComment(p: { code: string; name: string; priceMga: number }): string {
   return [

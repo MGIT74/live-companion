@@ -16,6 +16,8 @@ export interface LiveComment {
   id: string;
   liveVideoId: string;
   message: string;
+  /** Texte analysé, sans la mention ajoutée par « Répondre ». */
+  parsedText?: string;
   fromId?: string;
   fromName?: string;
   parentId?: string;

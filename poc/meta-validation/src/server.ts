@@ -6,7 +6,7 @@ import { encrypt } from './crypto.ts';
 import { bus, emit, log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { graph, GraphError, selectedPage, userToken } from './graph.ts';
-import { ingestionStats, ingestionStatus, pollOnce, startPolling, startSse, stopPolling, stopSse } from './ingestion.ts';
+import { ingestionStats, ingestionStatus, pollOnce, reparseComments, startPolling, startSse, stopPolling, stopSse } from './ingestion.ts';
 import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct } from './reservations.ts';
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
@@ -194,6 +194,7 @@ app.post('/api/ingestion/poll/stop', wrap(() => stopPolling()));
 app.post('/api/ingestion/sse/start', wrap((req) => startSse(targetId(req.body.target))));
 app.post('/api/ingestion/sse/stop', wrap(() => stopSse()));
 app.get('/api/ingestion/stats', wrap(() => ingestionStats()));
+app.post('/api/comments/reparse', wrap(() => reparseComments()));
 
 // Produits / commentaire produit
 app.get('/api/products/:code/comment', wrap((req) => {
@@ -246,7 +247,7 @@ app.post('/api/products/:code/register-comment', wrap((req) => {
 app.post('/api/report/parents', wrap(() => {
   const comments = Object.values(state.comments);
   const productIds = new Set(state.productComments.map((p) => p.commentId));
-  const plusReplies = comments.filter((c) => parseOrder(c.message, parseOptions()).type === 'plus');
+  const plusReplies = comments.filter((c) => parseOrder(c.parsedText ?? c.message, parseOptions()).type === 'plus');
   const rows = plusReplies.map((c) => ({
     id: c.id, message: c.message, parentId: c.parentId ?? null, sources: c.sources,
     parentIsProductComment: c.parentId ? productIds.has(c.parentId) : false,
@@ -270,7 +271,7 @@ app.post('/api/report/parents', wrap(() => {
 app.get('/api/parser', wrap((req) => parseOrder(String(req.query.text ?? ''), parseOptions())));
 app.post('/api/report/parser', wrap(() => {
   const comments = Object.values(state.comments);
-  const result = comments.map((c) => ({ message: c.message, parsed: parseOrder(c.message, parseOptions()), intent: state.intents.find((i) => i.id === c.intentId)?.status }));
+  const result = comments.map((c) => ({ message: c.message, parsed: parseOrder(c.parsedText ?? c.message, parseOptions()), intent: state.intents.find((i) => i.id === c.intentId)?.status }));
   const file = saveEvidence('T8', 'parser_on_live_comments', result);
   recordTest('T8', { evidenceFile: file, note: `${result.length} commentaires analysés. Vérifier à la main les faux positifs/négatifs puis marquer OK/KO.` });
   return result;

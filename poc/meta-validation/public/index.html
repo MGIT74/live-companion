@@ -121,6 +121,7 @@
       <span class="row" style="margin:0">
         <button onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents (T7)</button>
         <button onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur (T8)</button>
+        <button onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
         <button class="primary" onclick="newSession()">Nouvelle session (archiver)</button>
         <button onclick="if(confirm('Effacer commentaires, réservations et stock SANS archiver ?'))api('/api/reset-live')">Réinitialiser sans archiver</button>
       </span>
@@ -231,7 +232,7 @@ function render() {
   q('#ccount').textContent = `${S.comments.length}`;
   q('#comments').innerHTML = comments.map((c) => {
     const i = intentById[c.intentId];
-    return `<div class="item"><b>${esc(c.fromName || 'Anonyme')}</b> ${esc(c.message)}
+    return `<div class="item"><b>${esc(c.fromName || 'Anonyme')}</b> ${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}
       ${i ? `<span class="pill ${i.status}">${i.status}</span>` : ''}
       <div class="muted">${c.sources.join('+')} ${c.parentId ? '· réponse à <code>' + esc(c.parentId) + '</code>' : ''} ${c.latencyMs != null ? '· ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
   }).join('') || '<p class="muted">Aucun commentaire.</p>';

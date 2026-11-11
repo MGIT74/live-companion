@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOrder, formatMga, formatProductComment, type ParseOptions } from '../src/index.ts';
+import { parseOrder, formatMga, formatProductComment, stripMentions, type ParseOptions } from '../src/index.ts';
 
 const opts: ParseOptions = {
   knownCodes: ['JP01', 'RB02', 'SAC10'],
@@ -65,6 +65,15 @@ for (const [input, expected] of cases) {
 
 test('sans liste de codes, un code bien formé est accepté', () => {
   assert.deepEqual(parseOrder('AB12 +1'), { type: 'order', code: 'AB12', quantity: 1 });
+});
+
+test('stripMentions : retire la mention ajoutée par « Répondre »', () => {
+  assert.equal(stripMentions('Hands Graphic +1', [{ offset: 0, length: 13, name: 'Hands Graphic' }]), '+1');
+  assert.equal(stripMentions('Hands Graphic +1 M', [], ['Hands Graphic']), '+1 M');
+  assert.equal(stripMentions('RICA CREA, +2', [], ['Rica Crea']), '+2');
+  assert.equal(stripMentions('Rova JP01 +1', [{ offset: 0, length: 4 }]), 'JP01 +1');
+  assert.equal(stripMentions('JP01 +1'), 'JP01 +1');
+  assert.deepEqual(parseOrder(stripMentions('Hands Graphic +1', [], ['Hands Graphic'])), { type: 'plus', quantity: 1 });
 });
 
 test('formatMga', () => {

@@ -1,4 +1,4 @@
-import { parseOrder } from '@live-companion/order-parser';
+import { parseOrder, stripMentions, type MessageTag } from '@live-companion/order-parser';
 import { streamingBase } from './config.ts';
 import { appSecretProof } from './crypto.ts';
 import { emit, log } from './bus.ts';
@@ -8,7 +8,7 @@ import { handleParsed, parseOptions } from './reservations.ts';
 import { persist, recordTest, state, type LiveComment, type Source } from './store.ts';
 import { sendPrivateReplyForIntent } from './messenger.ts';
 
-const COMMENT_FIELDS = 'id,message,created_time,from{id,name},parent{id}';
+const COMMENT_FIELDS = 'id,message,message_tags,created_time,from{id,name},parent{id}';
 
 export interface RawComment {
   id: string;
@@ -17,6 +17,7 @@ export interface RawComment {
   from?: { id?: string; name?: string };
   parent?: { id?: string };
   parent_id?: string;
+  message_tags?: MessageTag[];
 }
 
 const stats = {
@@ -77,7 +78,11 @@ export function ingestComment(raw: RawComment, liveVideoId: string, source: Sour
   const isPageComment = comment.fromId && comment.fromId === state.selectedPageId;
   const isProductComment = state.productComments.some((pc) => pc.commentId === comment.id);
   if (!isPageComment && !isProductComment) {
-    const intent = handleParsed(comment, liveVideoId, comment.message, parseOrder(comment.message, parseOptions()));
+    // « Répondre » sur Facebook ajoute le nom tagué en tête (« Hands Graphic +1 ») : on le retire avant d'analyser.
+    const names = [state.pages.find((p) => p.id === state.selectedPageId)?.name ?? '', comment.parentId ? state.comments[comment.parentId]?.fromName ?? '' : ''];
+    const clean = stripMentions(comment.message, raw.message_tags, names);
+    if (clean !== comment.message) comment.parsedText = clean;
+    const intent = handleParsed(comment, liveVideoId, comment.message, parseOrder(clean, parseOptions()));
     if (intent?.status === 'RESERVED' && state.settings.autoPrivateReply) {
       sendPrivateReplyForIntent(intent.id).catch((e) => log('warn', `Réponse privée auto échouée : ${e.message}`));
     }
@@ -85,6 +90,22 @@ export function ingestComment(raw: RawComment, liveVideoId: string, source: Sour
   persist();
   emit('comment', comment);
   return comment;
+}
+
+/** Réanalyse les commentaires restés sans intention (ex. après une amélioration du parseur). */
+export function reparseComments() {
+  const pageName = state.pages.find((p) => p.id === state.selectedPageId)?.name ?? '';
+  let created = 0;
+  for (const c of Object.values(state.comments)) {
+    if (c.intentId || c.fromId === state.selectedPageId || state.productComments.some((pc) => pc.commentId === c.id)) continue;
+    const clean = stripMentions(c.message, [], [pageName, c.parentId ? state.comments[c.parentId]?.fromName ?? '' : '']);
+    const parsed = parseOrder(clean, parseOptions());
+    if (parsed.type === 'none') continue;
+    if (clean !== c.message) c.parsedText = clean;
+    if (handleParsed(c, c.liveVideoId, c.message, parsed)) created++;
+  }
+  persist();
+  return { created };
 }
 
 // ---------------------------------------------------------------- Polling (T4)

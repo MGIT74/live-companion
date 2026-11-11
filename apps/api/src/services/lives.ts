@@ -1,4 +1,4 @@
-import { parseOrder, type ParseResult } from '@live-companion/order-parser';
+import { parseOrder, stripMentions, type MessageTag, type ParseResult } from '@live-companion/order-parser';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db, schema } from '../db/client.ts';
 import { AppError, isDuplicate, notFound } from '../lib/errors.ts';
@@ -19,6 +19,10 @@ export interface CommentInput {
   source?: 'SSE' | 'POLL' | 'WEBHOOK' | 'MANUAL';
   /** Commentaire écrit par la Page elle-même : jamais une commande. */
   fromPage?: boolean;
+  /** message_tags de l'API Meta : mentions ajoutées par « Répondre » (« Hands Graphic +1 »). */
+  messageTags?: MessageTag[];
+  /** Noms à retirer en tête de message si les message_tags manquent (nom de la Page…). */
+  mentionNames?: string[];
 }
 
 type Outcome =
@@ -101,7 +105,11 @@ export async function ingestLiveComment(shopId: string, liveId: string, input: C
 
   let outcome: Outcome = { status: 'NOT_AN_ORDER' };
   const cat = await catalog(shopId);
-  const parsed = parseOrder(input.message, cat.options);
+  // Nom de la boutique et auteur du commentaire parent : mentions probables en tête de réponse.
+  const [shop] = await db.select({ name: schema.shops.name }).from(schema.shops).where(eq(schema.shops.id, shopId));
+  const [parent] = input.parentId ? await db.select({ author: lc.authorName }).from(lc).where(and(eq(lc.shopId, shopId), eq(lc.fbCommentId, input.parentId))) : [];
+  const text = stripMentions(input.message, input.messageTags, [...(input.mentionNames ?? []), shop?.name ?? '', parent?.author ?? '']);
+  const parsed = parseOrder(text, cat.options);
   if (!input.fromPage && parsed.type !== 'none') {
     const target = await resolveTarget(shopId, liveId, parsed, input.parentId, cat);
     if ('reason' in target && target.reason) {

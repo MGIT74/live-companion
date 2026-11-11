@@ -10,7 +10,7 @@ import { ingestionStats, ingestionStatus, pollOnce, reparseComments, startPollin
 import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct } from './reservations.ts';
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
-import { deleteProduct, moveProduct, saveProduct } from './catalog.ts';
+import { deleteProduct, moveProduct, removeProductPhoto, saveProduct, setProductPhoto } from './catalog.ts';
 import { archiveSession, listSessions, persist, recordTest, resetLiveData, sessionFile, state, TESTS, type TestStatus } from './store.ts';
 
 const app = express();
@@ -78,8 +78,10 @@ function basicAuth(req: Request, res: Response, next: NextFunction) {
   }
   res.set('WWW-Authenticate', 'Basic realm="Live Companion PoC"').status(401).send('Authentification requise');
 }
+// Photos produits : publiques (noms aléatoires) pour pouvoir les envoyer aux clients plus tard.
+app.use('/photos', express.static(config.photosDir, { maxAge: '7d', fallthrough: false }));
 app.use(basicAuth);
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 app.use(express.static(config.publicDir));
 
 app.get('/auth/login', (_req, res) => {
@@ -200,6 +202,8 @@ app.post('/api/comments/reparse', wrap(() => reparseComments()));
 // Catalogue : ajout, modification, suppression, ordre de passage
 app.post('/api/products', wrap((req) => saveProduct(req.body)));
 app.post('/api/products/:code/delete', wrap((req) => { deleteProduct(req.params.code); }));
+app.post('/api/products/:code/photo', wrap((req) => setProductPhoto(req.params.code, req.body.dataUrl)));
+app.post('/api/products/:code/photo/delete', wrap((req) => removeProductPhoto(req.params.code)));
 app.post('/api/products/:code/move', wrap((req) => { moveProduct(req.params.code, req.body.dir === 'up' ? 'up' : 'down'); }));
 
 // Produits / commentaire produit

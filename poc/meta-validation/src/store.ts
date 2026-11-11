@@ -10,7 +10,7 @@ import { config } from './config.ts';
 
 export interface PageRecord { id: string; name: string; tokenEnc: string; tasks?: string[] }
 export interface Variant { label: string; stock: number; reserved: number }
-export interface Product { code: string; name: string; priceMga: number; variants: Variant[] }
+export interface Product { code: string; name: string; priceMga: number; variants: Variant[]; /** Chemin public de la photo (/photos/…). */ photo?: string }
 
 export interface LiveComment {
   id: string;

@@ -1,4 +1,8 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { log } from './bus.ts';
+import { config } from './config.ts';
 import { persist, state, type Product } from './store.ts';
 
 /**
@@ -73,6 +77,7 @@ export function deleteProduct(code: string) {
   const idx = state.products.findIndex((x) => x.code === code);
   if (idx < 0) throw new Error('Produit introuvable');
   if (state.products[idx].variants.some((v) => v.reserved > 0)) throw new Error('Ce produit a des réservations : rejetez-les avant de le supprimer');
+  removePhotoFile(state.products[idx].photo);
   state.products.splice(idx, 1);
   persist();
   log('info', `Produit ${code} supprimé`);
@@ -86,4 +91,40 @@ export function moveProduct(code: string, dir: 'up' | 'down') {
   if (j < 0 || j >= state.products.length) return;
   [state.products[i], state.products[j]] = [state.products[j], state.products[i]];
   persist();
+}
+
+// ---------------------------------------------------------------- Photos
+fs.mkdirSync(config.photosDir, { recursive: true });
+const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MAX_BYTES = 4 * 1024 * 1024;
+
+function removePhotoFile(photo?: string) {
+  const name = photo?.match(/^\/photos\/([\w-]+\.(?:jpg|png|webp))$/)?.[1];
+  if (name) fs.rm(path.join(config.photosDir, name), { force: true }, () => {});
+}
+
+/** Enregistre la photo d'un produit (data URL envoyée par l'écran, déjà réduite côté navigateur). */
+export function setProductPhoto(code: string, dataUrl: string) {
+  const p = state.products.find((x) => x.code === code);
+  if (!p) throw new Error('Produit introuvable');
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl ?? ''));
+  if (!m) throw new Error('Photo invalide (JPEG, PNG ou WebP)');
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length || buf.length > MAX_BYTES) throw new Error('Photo trop lourde (4 Mo maximum)');
+  const name = `${p.code.toLowerCase()}-${crypto.randomBytes(6).toString('hex')}.${TYPES[m[1]]}`;
+  fs.writeFileSync(path.join(config.photosDir, name), buf);
+  removePhotoFile(p.photo);
+  p.photo = `/photos/${name}`;
+  persist();
+  log('info', `Photo du produit ${p.code} enregistrée`);
+  return p;
+}
+
+export function removeProductPhoto(code: string) {
+  const p = state.products.find((x) => x.code === code);
+  if (!p) throw new Error('Produit introuvable');
+  removePhotoFile(p.photo);
+  p.photo = undefined;
+  persist();
+  return p;
 }

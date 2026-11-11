@@ -140,6 +140,11 @@
   .vrow input { min-width:0; }
   .prod { display:flex; flex-direction:column; gap:10px; }
   .prods { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .photo { width:100%; aspect-ratio:4/3; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); font-size:13px; }
+  .thumb { width:44px; height:44px; flex:none; border-radius:9px; background:var(--fill) center/cover no-repeat; }
+  .cur-photo { width:120px; height:120px; flex:none; border-radius:14px; background:var(--fill) center/cover no-repeat; }
+  .pick { display:flex; gap:12px; align-items:center; }
+  .pick .preview { width:96px; height:96px; flex:none; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); font-size:12px; text-align:center; }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -354,6 +359,15 @@
     </div>
     <span class="muted" style="margin-top:-4px">Le code est ce que les clients écrivent en commentaire : « JP01 M ».</span>
     <label class="field">Nom<input id="pName" required placeholder="Jean blanc slim"></label>
+    <div class="field">Photo
+      <div class="pick">
+        <div class="preview" id="pPreview">Pas de photo</div>
+        <div class="stack" style="gap:8px">
+          <label class="btn" style="cursor:pointer">Choisir ou prendre une photo<input type="file" id="pFile" accept="image/*" class="sr" onchange="pickPhoto(this)"></label>
+          <button type="button" class="sm" id="pRemove" onclick="clearPhoto()">Retirer la photo</button>
+        </div>
+      </div>
+    </div>
     <div class="field">Tailles ou couleurs, avec la quantité en stock</div>
     <div id="pVariants" class="stack" style="gap:8px"></div>
     <button type="button" onclick="addVariantRow()" style="align-self:flex-start">+ Ajouter une taille ou couleur</button>
@@ -513,9 +527,9 @@ function render() {
     q('#curPos').textContent = `${i + 1} / ${n}`;
     q('#nextLabel').textContent = n > 1 ? `Produit suivant : ${next.code}` : 'Produit suivant';
     q('#current').innerHTML = `
-      <div class="row" style="flex-wrap:nowrap;align-items:flex-start;margin:0 0 10px">
-        <span class="code" style="font-size:16px;padding:4px 10px">${esc(p.code)}</span>
-        <div style="flex:1;min-width:0"><div class="name">${esc(p.name)}</div><div class="strong" style="font-size:18px">${mga(p.priceMga)}</div></div>
+      <div class="row" style="flex-wrap:nowrap;align-items:flex-start;margin:0 0 10px;gap:14px">
+        ${p.photo ? `<div class="cur-photo" style="background-image:url('${esc(p.photo)}')" role="img" aria-label="${esc(p.name)}"></div>` : ''}
+        <div style="flex:1;min-width:0"><span class="code" style="font-size:16px;padding:4px 10px">${esc(p.code)}</span><div class="name" style="margin-top:6px">${esc(p.name)}</div><div class="strong" style="font-size:18px">${mga(p.priceMga)}</div></div>
       </div>
       <div class="row">${chips(stockOf(p.code))}</div>
       <div class="row">
@@ -526,7 +540,7 @@ function render() {
       <div class="muted">${published.length ? `<span class="pill OK">Publié</span> ${published.map((c) => `<code>${esc(c.commentId)}</code>`).join(' ')} — <b>pensez à l’épingler</b>` : 'Pas encore publié dans ce live.'}</div>`;
     q('#playlist').innerHTML = S.products.map((x, k) => {
       const dispo = stockOf(x.code).reduce((a, v) => a + v.available, 0);
-      return `<div class="pl"><span class="n">${k + 1}</span><span class="code">${esc(x.code)}</span><span class="t">${esc(x.name)}<br><span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}</span></span>
+      return `<div class="pl"><span class="n">${k + 1}</span>${x.photo ? `<span class="thumb" style="background-image:url('${esc(x.photo)}')"></span>` : ''}<span class="code">${esc(x.code)}</span><span class="t">${esc(x.name)}<br><span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}</span></span>
         ${k === i ? '<span class="pill AWAIT_CONFIRM">En cours</span>' : `<button class="sm" onclick="setCurrent(${k})">Présenter</button>`}</div>`;
     }).join('');
   } else {
@@ -568,6 +582,7 @@ function render() {
   q('#stock').innerHTML = S.products.length ? S.products.map((p, k) => {
     const sv = stockOf(p.code), dispo = sv.reduce((a, v) => a + v.available, 0), res = sv.reduce((a, v) => a + v.reserved, 0);
     return `<div class="card prod">
+      <div class="photo" style="${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}">${p.photo ? '' : `<button class="sm" onclick="openProduct('${esc(p.code)}')">+ Ajouter une photo</button>`}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="code" style="font-size:14px;padding:3px 10px">${esc(p.code)}</span>
         ${dispo <= 0 ? '<span class="pill KO">Rupture</span>' : sv.some((v) => v.available < 3) ? '<span class="pill PARTIEL">Stock bas</span>' : ''}<span class="muted" style="margin-left:auto">n° ${k + 1}</span></div>
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:16px">${esc(p.name)}</b><b style="white-space:nowrap">${mga(p.priceMga)}</b></div>
@@ -591,7 +606,41 @@ function render() {
 }
 
 // ---------- Produits : ajout et modification
-let editingCode = null;
+let editingCode = null, pendingPhoto = null, photoAction = null; // photoAction : 'set' | 'remove' | null
+
+/** Réduit la photo dans le navigateur (1080 px, JPEG) : envoi rapide même en 3G. */
+function shrink(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1080, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+function showPreview(url) {
+  const el = q('#pPreview');
+  el.style.backgroundImage = url ? `url('${url}')` : ''; el.textContent = url ? '' : 'Pas de photo';
+  q('#pRemove').style.display = url ? '' : 'none';
+}
+async function pickPhoto(input) {
+  const f = input.files?.[0]; input.value = '';
+  if (!f) return;
+  try { pendingPhoto = await shrink(f); photoAction = 'set'; showPreview(pendingPhoto); }
+  catch (e) { q('#pErr').textContent = 'Cette image ne peut pas être lue. Essayez une photo JPEG ou PNG.'; }
+}
+function clearPhoto() { pendingPhoto = null; photoAction = 'remove'; showPreview(null); }
+async function post(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || 'Erreur');
+  return j;
+}
 function addVariantRow(label = '', stock = '') {
   const row = document.createElement('div');
   row.className = 'vrow';
@@ -608,16 +657,23 @@ function openProduct(code) {
   q('#pVariants').innerHTML = ''; q('#pErr').textContent = '';
   (p ? p.variants : [{ label: '', stock: '' }]).forEach((v) => addVariantRow(v.label, v.stock));
   q('#pDelete').style.display = p ? '' : 'none';
+  pendingPhoto = null; photoAction = null; showPreview(p?.photo ?? null);
   q('#prodDlg').showModal();
 }
 async function saveProduct() {
   const variants = [...q('#pVariants').querySelectorAll('.vrow')].map((r) => ({ label: r.querySelector('.vl').value.trim(), stock: Number(r.querySelector('.vs').value.replace(/\D/g, '') || 0) }))
     .filter((v, i, all) => v.label || all.length === 1);
   const body = { originalCode: editingCode || undefined, code: q('#pCode').value, name: q('#pName').value, priceMga: Number(q('#pPrice').value.replace(/\D/g, '')), variants };
-  const res = await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) { q('#pErr').textContent = j.error || 'Erreur'; return; }
-  q('#prodDlg').close(); toast(editingCode ? `${j.code} modifié` : `${j.code} ajouté au catalogue`); refresh();
+  const btn = q('#prodDlg button[type=submit]'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+  let j;
+  try {
+    j = await post('/api/products', body);
+    editingCode = j.code; // si la photo échoue, un nouvel essai modifie le produit déjà créé
+    if (photoAction === 'set' && pendingPhoto) await post(`/api/products/${j.code}/photo`, { dataUrl: pendingPhoto });
+    if (photoAction === 'remove' && editingCode) await post(`/api/products/${j.code}/photo/delete`);
+  } catch (e) { q('#pErr').textContent = e.message; return; }
+  finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+  q('#prodDlg').close(); toast(body.originalCode ? `${j.code} modifié` : `${j.code} ajouté au catalogue`); refresh();
 }
 async function deleteProduct() {
   if (!editingCode || !confirm(`Supprimer ${editingCode} du catalogue ?`)) return;

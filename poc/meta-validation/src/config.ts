@@ -23,6 +23,7 @@ export const config = {
   encryptionKey: required('ENCRYPTION_KEY'),
   dashboardPassword: required('DASHBOARD_PASSWORD'),
   dataDir: path.join(root, 'data'),
+  photosDir: path.join(root, 'data', 'photos'),
   evidenceDir: path.join(root, 'evidence'),
   publicDir: path.join(root, 'public'),
   productsFile: path.join(root, 'products.json'),

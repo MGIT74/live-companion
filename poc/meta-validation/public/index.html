@@ -2,144 +2,335 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Live Companion — PoC Meta</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Live Companion</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23007AFF'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='3.5'/%3E%3Cpath d='M8.5 8.5a10.6 10.6 0 0 0 0 15M23.5 8.5a10.6 10.6 0 0 1 0 15'/%3E%3C/g%3E%3C/svg%3E">
+<script>try { var th = localStorage.getItem('lc.theme'); if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th; } catch (e) {}</script>
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --muted:#667085; --line:#e4e7ec; --accent:#1877f2; --ok:#12b76a; --warn:#f79009; --ko:#f04438; }
+  /* ---------- Thème Apple : clair par défaut, sombre selon l'appareil ou forcé */
+  :root {
+    color-scheme: light;
+    --bg:#F2F2F7; --side:rgba(246,246,248,.85); --card:#FFFFFF; --fill:#F2F2F7; --fill2:#E5E5EA; --sep:#E5E5EA; --line:#D1D1D6;
+    --ink:#1D1D1F; --muted:#6E6E73; --ink2:#3A3A3C; --accent:#007AFF; --accent2:#0062CC; --soft:rgba(0,122,255,.12);
+    --green:#248A3D; --green-bg:#E3F7E8; --orange:#C93400; --orange-bg:#FFF4E0; --red:#D70015; --red-bg:#FFE9E7; --blue:#0062CC; --blue-bg:#E5F1FF; --live:#FF3B30;
+    --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05); --seg:rgba(118,118,128,.12); --seg-on:#FFFFFF; --seg-on-ink:#1D1D1F;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg:#000000; --side:rgba(28,28,30,.85); --card:#1C1C1E; --fill:#2C2C2E; --fill2:#3A3A3C; --sep:#38383A; --line:#48484A;
+    --ink:#F5F5F7; --muted:#98989D; --ink2:#D1D1D6; --accent:#0A84FF; --accent2:#409CFF; --soft:rgba(10,132,255,.24);
+    --green:#30D158; --green-bg:rgba(48,209,88,.18); --orange:#FF9F0A; --orange-bg:rgba(255,159,10,.18); --red:#FF453A; --red-bg:rgba(255,69,58,.18); --blue:#409CFF; --blue-bg:rgba(10,132,255,.2); --live:#FF453A;
+    --shadow:none; --seg:rgba(118,118,128,.24); --seg-on:#636366; --seg-on-ink:#FFFFFF;
+  } }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:#000000; --side:rgba(28,28,30,.85); --card:#1C1C1E; --fill:#2C2C2E; --fill2:#3A3A3C; --sep:#38383A; --line:#48484A;
+    --ink:#F5F5F7; --muted:#98989D; --ink2:#D1D1D6; --accent:#0A84FF; --accent2:#409CFF; --soft:rgba(10,132,255,.24);
+    --green:#30D158; --green-bg:rgba(48,209,88,.18); --orange:#FF9F0A; --orange-bg:rgba(255,159,10,.18); --red:#FF453A; --red-bg:rgba(255,69,58,.18); --blue:#409CFF; --blue-bg:rgba(10,132,255,.2); --live:#FF453A;
+    --shadow:none; --seg:rgba(118,118,128,.24); --seg-on:#636366; --seg-on-ink:#FFFFFF;
+  }
+
   * { box-sizing: border-box; }
-  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
-  header { background:#0f1729; color:#fff; padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; position:sticky; top:0; z-index:5; }
-  header h1 { font-size:16px; margin:0 12px 0 0; }
-  header .pill { background:#ffffff1f; color:#fff; }
-  header .pill.OK { background:#12b76a; color:#fff; }
-  header .pill.KO { background:#f04438; color:#fff; }
-  main { display:grid; gap:12px; padding:12px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
-  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; min-width:0; }
-  section h2 { font-size:14px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .wide { grid-column: 1 / -1; }
-  button { font:inherit; border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; }
-  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-  button.big { font-size:16px; padding:12px 16px; width:100%; }
-  button:disabled { opacity:.5; cursor:default; }
-  input, select, textarea { font:inherit; border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
-  textarea { width:100%; min-height:110px; white-space:pre; }
-  .row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:6px 0; }
-  .muted { color:var(--muted); font-size:12px; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; background:#eef2f6; }
-  .OK,.RESERVED,.CONFIRMED,.SENT { background:#d1fadf; color:#05603a; }
-  .KO,.REJECTED,.CANCELLED,.FAILED { background:#fee4e2; color:#912018; }
-  .PARTIEL,.NEEDS_REVIEW,.WAITLISTED { background:#fef0c7; color:#93370d; }
-  .list { max-height:420px; overflow:auto; border-top:1px solid var(--line); }
-  .item { padding:6px 2px; border-bottom:1px solid var(--line); }
-  .item b { font-weight:600; }
-  table { width:100%; border-collapse:collapse; }
-  td, th { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { font-size:12px; color:var(--muted); font-weight:500; }
-  .product { border:1px solid var(--line); border-radius:8px; padding:8px; margin:6px 0; }
-  .product.current { border:2px solid var(--accent); background:#f0f6ff; }
-  .low { color:var(--ko); font-weight:600; }
-  code { background:#f2f4f7; padding:1px 4px; border-radius:4px; font-size:12px; }
-  #log { font:12px/1.4 ui-monospace,Menlo,monospace; max-height:220px; overflow:auto; white-space:pre-wrap; }
+  html, body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 var(--font); letter-spacing:-.01em; -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); }
+  button, input, select, textarea { font:inherit; color:inherit; letter-spacing:inherit; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; border-radius:6px; }
+  h1 { margin:0; font-size:28px; font-weight:700; letter-spacing:-.02em; }
+  h2 { margin:0; font-size:17px; font-weight:600; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  /* ---------- Coque : menu latéral + contenu */
+  .shell { display:flex; min-height:100vh; }
+  .side { position:sticky; top:0; height:100vh; width:240px; flex:none; padding:22px 14px; display:flex; flex-direction:column; gap:4px;
+    background:var(--side); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-right:1px solid var(--sep); overflow-y:auto; }
+  .brand { display:flex; align-items:center; gap:10px; padding:0 10px 18px; font-size:17px; font-weight:700; }
+  .mark { width:34px; height:34px; border-radius:10px; background:var(--accent); display:grid; place-items:center; color:#fff; flex:none; }
+  .page-box { margin:0 0 16px; padding:10px 12px; border-radius:12px; background:var(--card); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:2px; }
+  .page-box select { border:0; background:transparent; font-weight:600; padding:0; outline:none; cursor:pointer; width:100%; }
+  .nav { display:flex; align-items:center; justify-content:flex-start; gap:12px; font-size:15px; padding:10px 12px; border-radius:10px; color:var(--ink2); text-decoration:none; font-weight:500; min-height:44px;
+    background:none; border:0; cursor:pointer; text-align:left; width:100%; }
+  .nav:hover { background:var(--fill); color:var(--ink); }
+  .nav[aria-current="page"] { background:var(--soft); color:var(--accent); font-weight:600; }
+  .nav .count { margin-left:auto; font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--orange-bg); color:var(--orange); }
+  .nav .count:empty { display:none; }
+  .grow { flex:1; min-height:16px; }
+  .main { flex:1; min-width:0; padding:28px 36px 64px; display:flex; flex-direction:column; gap:18px; }
+  .top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+  .view { display:none; flex-direction:column; gap:18px; }
+  .view.on { display:flex; }
+  .tabbar { display:none; }
+
+  /* ---------- Composants */
+  .card { background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:20px; min-width:0; }
+  .card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .grid { display:grid; gap:16px; }
+  .cols-regie { grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); align-items:start; }
+  .cols-2 { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); align-items:start; }
+  .stack { display:flex; flex-direction:column; gap:16px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .strong { font-weight:600; }
+  .btn, button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 14px; border-radius:11px; border:0;
+    background:var(--fill); color:var(--ink); font-weight:600; font-size:14px; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .btn:hover, button:hover { background:var(--fill2); }
+  button.primary, .btn.primary { background:var(--accent); color:#fff; }
+  button.primary:hover, .btn.primary:hover { background:var(--accent2); }
+  button.danger { background:var(--red-bg); color:var(--red); }
+  button.big { width:100%; min-height:56px; font-size:17px; border-radius:14px; margin-top:12px; }
+  button.sm { min-height:34px; padding:0 11px; font-size:13px; border-radius:9px; }
+  button:disabled { opacity:.45; cursor:default; }
+  input, select, textarea { min-height:42px; padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--card); outline:none; }
+  input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--soft); }
+  input[type=checkbox] { min-height:0; width:20px; height:20px; accent-color:var(--accent); }
+  label.check { display:flex; align-items:center; gap:10px; font-size:14px; cursor:pointer; }
+  .seg { display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:var(--seg); }
+  .seg button { background:transparent; min-height:32px; padding:0 12px; border-radius:8px; font-weight:500; font-size:13px; color:var(--muted); }
+  .seg button[aria-pressed="true"] { background:var(--seg-on); color:var(--seg-on-ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+  .pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; background:var(--fill); color:var(--ink2); vertical-align:middle; }
+  .OK,.RESERVED,.CONFIRMED,.SENT,.DONE { background:var(--green-bg); color:var(--green); }
+  .KO,.REJECTED,.CANCELLED,.FAILED { background:var(--red-bg); color:var(--red); }
+  .PARTIEL,.NEEDS_REVIEW,.WAITLISTED { background:var(--orange-bg); color:var(--orange); }
+  .AWAIT_CONFIRM,.ASK_NAME,.ASK_PHONE,.ASK_ADDRESS,.ASK_CITY,.ASK_PAYMENT { background:var(--blue-bg); color:var(--blue); }
+  .live-on { background:var(--live); color:#fff; font-weight:700; letter-spacing:.03em; }
+  .live-on::before { content:""; width:7px; height:7px; border-radius:50%; background:#fff; margin-right:6px; animation:blink 1.4s infinite; }
+  @keyframes blink { 50% { opacity:.3; } }
+  .code { display:inline-block; background:var(--accent); color:#fff; font-weight:700; font-size:13px; padding:2px 8px; border-radius:7px; letter-spacing:0; }
+  code { background:var(--fill); padding:1px 5px; border-radius:5px; font-size:12px; word-break:break-all; }
+  .chip { display:inline-flex; border:1px solid var(--line); border-radius:8px; padding:4px 9px; font-size:13px; }
+  .chip.low { border-color:transparent; background:var(--orange-bg); color:var(--orange); }
+  .chip.out { border-color:transparent; background:var(--red-bg); color:var(--red); text-decoration:line-through; }
+
+  .kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .kpi { padding:16px 18px; display:flex; flex-direction:column; gap:2px; }
+  .kpi .l { color:var(--muted); font-size:13px; }
+  .kpi .v { font-size:26px; font-weight:700; letter-spacing:-.02em; }
+
+  .list { max-height:520px; overflow:auto; }
+  .item { padding:12px 0; border-top:1px solid var(--sep); display:flex; flex-direction:column; gap:6px; }
+  .item:first-child { border-top:0; }
+  .item .head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .item .row { margin:2px 0 0; }
+  .empty { padding:24px; text-align:center; color:var(--muted); font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { text-align:left; padding:11px 8px; border-top:1px solid var(--sep); vertical-align:middle; }
+  th { font-size:13px; color:var(--muted); font-weight:500; border-top:0; }
+  .table-wrap { overflow-x:auto; }
+
+  .current .name { font-size:22px; font-weight:700; letter-spacing:-.02em; }
+  .playlist .pl { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--sep); }
+  .playlist .pl:first-child { border-top:0; }
+  .playlist .pl .n { width:18px; color:var(--muted); font-size:13px; }
+  .playlist .pl .t { flex:1; min-width:0; }
+  #log { font:12px/1.5 ui-monospace,"SF Mono",Menlo,monospace; max-height:300px; overflow:auto; white-space:pre-wrap; color:var(--ink2); }
+  details > summary { cursor:pointer; color:var(--muted); font-size:14px; list-style:none; padding:4px 0; }
+  details > summary::-webkit-details-marker { display:none; }
+  details > summary::before { content:"›"; display:inline-block; width:16px; transition:transform .15s; }
+  details[open] > summary::before { transform:rotate(90deg); }
+
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
+    background:rgba(29,29,31,.92); color:#fff; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); backdrop-filter:blur(12px); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+  .toast.bad { background:var(--red); }
+
+  @media (max-width: 1100px) { .cols-regie { grid-template-columns:1fr; } }
+  @media (max-width: 860px) {
+    .side { display:none; }
+    .main { padding:18px 14px 96px; }
+    h1 { font-size:24px; }
+    .kpis { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+    .kpi { padding:10px; }
+    .kpi .l { font-size:11px; }
+    .kpi .v { font-size:20px; }
+    .tabbar { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:30; justify-content:space-around; padding:6px 2px calc(6px + env(safe-area-inset-bottom));
+      background:var(--side); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid var(--sep); }
+    .tabbar button { flex-direction:column; gap:2px; background:none; min-height:0; padding:4px; font-size:11px; font-weight:500; color:var(--muted); min-width:58px; }
+    .tabbar button[aria-current="page"] { color:var(--accent); }
+    .toast { bottom:84px; }
+    .hide-sm { display:none; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Live Companion · PoC Meta</h1>
-  <span id="conn" class="pill">…</span>
-  <select id="pageSel"></select>
-  <a href="/auth/login"><button class="primary">Connecter Facebook (T1)</button></a>
-  <button onclick="api('/api/pages/subscribe').then(()=>toast('Page abonnée aux webhooks'))">Abonner la Page aux webhooks</button>
-  <span id="live" class="pill">Aucun live</span>
-  <a href="/report.md" target="_blank" style="color:#9ec5ff">Rapport .md</a>
-</header>
-
-<main>
-  <section>
-    <h2>1 · Live Facebook <span class="muted">T3</span></h2>
-    <div class="row"><button onclick="detectLive()">Détecter le live actif</button></div>
-    <div id="lives" class="muted"></div>
-    <div class="row"><button onclick="listPosts()">Pas de live ? Utiliser une publication</button></div>
-    <div id="posts" class="muted"></div>
-    <div class="row">
-      <input id="manualLive" placeholder="ou id du live_video" style="flex:1">
-      <button onclick="api('/api/lives/select',{id:val('manualLive')})">Utiliser</button>
+<div class="shell">
+  <nav class="side" aria-label="Menu principal">
+    <div class="brand"><span class="mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg></span>Live Companion</div>
+    <label class="page-box"><span class="muted">Page Facebook</span><select id="pageSel" aria-label="Page Facebook"></select></label>
+    <button class="nav" data-view="regie"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie live</button>
+    <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Réservations<span class="count" id="navReview"></span></button>
+    <button class="nav" data-view="messenger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
+    <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Stock</button>
+    <button class="nav" data-view="sessions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Sessions archivées</button>
+    <button class="nav" data-view="reglages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Connexion et tests</button>
+    <div class="grow"></div>
+    <div class="seg" role="group" aria-label="Apparence" id="themeSeg" style="width:100%">
+      <button type="button" data-theme="auto" style="flex:1">Auto</button><button type="button" data-theme="light" style="flex:1">Clair</button><button type="button" data-theme="dark" style="flex:1">Sombre</button>
     </div>
-    <h2 style="margin-top:12px">2 · Ingestion <span class="muted">T4 · T5</span></h2>
-    <div class="row">
-      <select id="target"><option value="live">objet live_video</option><option value="video">objet video</option></select>
-      <button onclick="api('/api/ingestion/poll/once',{target:val('target')})">Lire 1 fois</button>
+  </nav>
+
+  <main class="main">
+    <div class="top">
+      <div class="row" style="margin:0">
+        <span id="live" class="pill">Aucun live</span>
+        <span id="conn" class="pill">…</span>
+      </div>
+      <div class="row" style="margin:0">
+        <a href="/auth/login" class="btn primary" id="fbBtn">Connecter Facebook</a>
+      </div>
     </div>
-    <div class="row">
-      <button onclick="api('/api/ingestion/poll/start',{target:val('target'),intervalMs:5000})">▶ Polling 5 s</button>
-      <button onclick="api('/api/ingestion/poll/stop')">■ Polling</button>
-      <button onclick="api('/api/ingestion/sse/start',{target:val('target')})">▶ Temps réel SSE</button>
-      <button onclick="api('/api/ingestion/sse/stop')">■ SSE</button>
-    </div>
-    <div id="ingest" class="muted"></div>
-    <div class="row"><label><input type="checkbox" id="autoPR" onchange="api('/api/settings',{autoPrivateReply:this.checked})"> Réponse privée automatique après réservation</label></div>
-  </section>
 
-  <section>
-    <h2>3 · Régie : produit présenté <span class="muted">T6 · T7</span></h2>
-    <div id="current"></div>
-    <button class="big primary" onclick="nextProduct()">Produit suivant ▶</button>
-    <div id="playlist"></div>
-  </section>
+    <!-- ================= Régie ================= -->
+    <section class="view" id="v-regie" aria-label="Régie live">
+      <h1>Régie live</h1>
+      <div class="kpis">
+        <div class="card kpi"><span class="l">Commentaires</span><span class="v" id="kComments">0</span></div>
+        <div class="card kpi"><span class="l">Réservations</span><span class="v" id="kIntents">0</span></div>
+        <div class="card kpi"><span class="l">À valider</span><span class="v" id="kReview">0</span></div>
+        <div class="card kpi"><span class="l">Confirmées</span><span class="v" id="kConfirmed">0</span></div>
+      </div>
 
-  <section>
-    <h2>Commentaires <span id="ccount" class="muted"></span></h2>
-    <div class="row"><label><input type="checkbox" id="onlyOrders" onchange="render()"> Commandes uniquement</label></div>
-    <div id="comments" class="list"></div>
-  </section>
+      <div class="grid cols-regie">
+        <div class="stack">
+          <div class="card current">
+            <div class="card-head" style="margin-bottom:8px"><span class="muted">Produit présenté</span><span class="muted" id="curPos"></span></div>
+            <div id="current"></div>
+            <button class="big primary" onclick="nextProduct()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5v14l9-7-9-7Z"/><path d="M19 5v14"/></svg><span id="nextLabel">Produit suivant</span></button>
+          </div>
+          <div class="card">
+            <h2 style="margin-bottom:6px">Ordre de passage</h2>
+            <div id="playlist" class="playlist"></div>
+          </div>
+        </div>
 
-  <section>
-    <h2>Réservations et validations <span class="muted">T8 · T9</span></h2>
-    <div class="row">
-      <input id="manualText" placeholder="Saisie rapide : JP01 2 M" style="flex:1">
-      <input id="manualName" placeholder="Client" style="width:110px">
-      <button onclick="api('/api/intents/manual',{text:val('manualText'),name:val('manualName')}).then(()=>{q('#manualText').value=''})">Ajouter</button>
-    </div>
-    <div id="intents" class="list"></div>
-  </section>
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h2>Saisie rapide</h2></div>
+            <div class="row" style="margin:0">
+              <input id="manualText" placeholder="JP01 2 M" style="flex:1 1 140px" aria-label="Commande">
+              <input id="manualName" placeholder="Nom du client" style="flex:1 1 140px" aria-label="Nom du client">
+              <button class="primary" onclick="api('/api/intents/manual',{text:val('manualText'),name:val('manualName')}).then(()=>{q('#manualText').value='';toast('Réservation ajoutée')})">Ajouter</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h2>Commentaires du live <span class="muted" id="ccount"></span></h2>
+              <label class="check"><input type="checkbox" id="onlyOrders" onchange="render()"> Commandes uniquement</label>
+            </div>
+            <div id="comments" class="list"></div>
+          </div>
+        </div>
+      </div>
 
-  <section>
-    <h2>Messenger <span class="muted">T10</span></h2>
-    <div id="convs" class="list"></div>
-  </section>
+      <div class="card">
+        <div class="card-head"><h2>Suivre un live</h2><span class="muted">Choisissez le live (ou une publication) dont il faut lire les commentaires.</span></div>
+        <div class="row">
+          <button class="primary" onclick="detectLive()">Détecter le live en cours</button>
+          <button onclick="listPosts()">Pas de live ? Utiliser une publication</button>
+        </div>
+        <div id="lives" class="muted"></div>
+        <div id="posts" class="muted"></div>
+        <details style="margin-top:10px">
+          <summary>Réglages de lecture des commentaires</summary>
+          <div class="row">
+            <input id="manualLive" placeholder="id du live_video" style="flex:1 1 220px" aria-label="Identifiant du live">
+            <button onclick="api('/api/lives/select',{id:val('manualLive')})">Utiliser cet id</button>
+          </div>
+          <div class="row">
+            <select id="target" aria-label="Objet lu"><option value="live">objet live_video</option><option value="video">objet video</option></select>
+            <button onclick="api('/api/ingestion/poll/once',{target:val('target')})">Lire une fois</button>
+            <button onclick="api('/api/ingestion/poll/start',{target:val('target'),intervalMs:5000})">▶ Lecture toutes les 5 s</button>
+            <button onclick="api('/api/ingestion/poll/stop')">■ Arrêter</button>
+            <button onclick="api('/api/ingestion/sse/start',{target:val('target')})">▶ Temps réel</button>
+            <button onclick="api('/api/ingestion/sse/stop')">■ Arrêter</button>
+          </div>
+          <div id="ingest" class="muted"></div>
+        </details>
+      </div>
+    </section>
 
-  <section>
-    <h2>Stock</h2>
-    <div id="stock"></div>
-    <div class="row" style="margin-top:10px">
-      <input id="parseTry" placeholder="Tester le parseur…" style="flex:1" oninput="tryParse()">
-    </div>
-    <div id="parseOut" class="muted"></div>
-  </section>
+    <!-- ================= Réservations ================= -->
+    <section class="view" id="v-reservations" aria-label="Réservations">
+      <h1>Réservations</h1>
+      <div class="card">
+        <div class="card-head">
+          <div class="seg" role="group" aria-label="Filtrer" id="intentSeg">
+            <button type="button" data-f="all" aria-pressed="true">Toutes</button>
+            <button type="button" data-f="review" aria-pressed="false">À valider</button>
+            <button type="button" data-f="ok" aria-pressed="false">Réservées</button>
+            <button type="button" data-f="closed" aria-pressed="false">Rejetées / annulées</button>
+          </div>
+          <label class="check"><input type="checkbox" id="autoPR" onchange="api('/api/settings',{autoPrivateReply:this.checked})"> Message privé automatique après réservation</label>
+        </div>
+        <div id="intents" class="list" style="max-height:none"></div>
+      </div>
+    </section>
 
-  <section class="wide">
-    <h2>Résultats des 10 tests
-      <span class="row" style="margin:0">
-        <button onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents (T7)</button>
-        <button onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur (T8)</button>
-        <button onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
-        <button class="primary" onclick="newSession()">Nouvelle session (archiver)</button>
-        <button onclick="if(confirm('Effacer commentaires, réservations et stock SANS archiver ?'))api('/api/reset-live')">Réinitialiser sans archiver</button>
-      </span>
-    </h2>
-    <table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th>Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table>
-    <p class="muted" id="urls"></p>
-  </section>
+    <!-- ================= Messenger ================= -->
+    <section class="view" id="v-messenger" aria-label="Messenger">
+      <h1>Messenger</h1>
+      <div class="card"><div id="convs"></div></div>
+    </section>
 
-  <section class="wide">
-    <h2>Sessions archivées</h2>
-    <div id="sessions" class="muted">Aucune session archivée.</div>
-  </section>
+    <!-- ================= Stock ================= -->
+    <section class="view" id="v-stock" aria-label="Stock">
+      <h1>Stock</h1>
+      <div class="card"><div id="stock" class="table-wrap"></div></div>
+      <div class="card">
+        <h2 style="margin-bottom:10px">Tester un commentaire</h2>
+        <input id="parseTry" placeholder="Ex. JP01 2 M, +1, misy ve L ?" style="width:100%" oninput="tryParse()" aria-label="Commentaire à tester">
+        <div id="parseOut" class="muted" style="margin-top:10px"></div>
+      </div>
+    </section>
 
-  <section class="wide">
-    <h2>Journal</h2>
-    <div id="log"></div>
-  </section>
-</main>
+    <!-- ================= Sessions ================= -->
+    <section class="view" id="v-sessions" aria-label="Sessions archivées">
+      <div class="top"><h1>Sessions archivées</h1><button class="primary" onclick="newSession()">Nouvelle session (archiver l’actuelle)</button></div>
+      <div class="card"><div id="sessions" class="table-wrap muted">Aucune session archivée.</div></div>
+    </section>
+
+    <!-- ================= Connexion et tests ================= -->
+    <section class="view" id="v-reglages" aria-label="Connexion et tests">
+      <h1>Connexion et tests</h1>
+      <div class="card">
+        <h2 style="margin-bottom:10px">Facebook</h2>
+        <div class="row">
+          <a href="/auth/login" class="btn primary">Connecter Facebook</a>
+          <button onclick="api('/api/pages/subscribe').then(()=>toast('Page abonnée aux webhooks'))">Abonner la Page aux webhooks</button>
+          <a href="/report.md" target="_blank" class="btn">Rapport</a>
+        </div>
+        <p class="muted" id="urls"></p>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Résultats des 10 tests</h2>
+          <div class="row" style="margin:0">
+            <button class="sm" onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents</button>
+            <button class="sm" onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur</button>
+            <button class="sm" onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
+            <button class="sm danger" onclick="if(confirm('Effacer commentaires, réservations et stock SANS archiver ?'))api('/api/reset-live')">Réinitialiser sans archiver</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th class="hide-sm">Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:10px">Journal</h2>
+        <div id="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Menu">
+    <button data-view="regie"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie</button>
+    <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Réservations<span id="tabReview"></span></span></button>
+    <button data-view="messenger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
+    <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Stock</button>
+    <button data-view="reglages"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Réglages</button>
+  </nav>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const FR = {
@@ -153,13 +344,51 @@ const FR = {
   MVOLA: 'MVola', ORANGE_MONEY: 'Orange Money', AIRTEL_MONEY: 'Airtel Money', COD: 'À la livraison', PICKUP: 'Retrait boutique',
 };
 const fr = (k) => FR[k] ?? k;
-let S = null, currentIdx = Number(localStorage.getItem('lc_current') || 0);
+const WHY = {
+  multiple_codes: 'plusieurs produits dans le même message', unknown_code: 'code produit inconnu', code_without_quantity: 'quantité ou taille à préciser',
+  unknown_variant: 'taille ou couleur inconnue', quantity_too_high: 'quantité inhabituelle, à vérifier', missing_variant: 'taille ou couleur à préciser',
+};
+const why = (r) => esc(String(r ?? '').replace(/^ambigu : (\w+)/, (_, k) => WHY[k] ?? k.replace(/_/g, ' ')).replace(/^variante non précisée$/, 'taille ou couleur à préciser'));
+let S = null, currentIdx = Number(localStorage.getItem('lc_current') || 0), intentFilter = 'all';
 const q = (s) => document.querySelector(s);
 const val = (id) => document.getElementById(id).value;
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mga = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Ar';
+const ago = (d) => { if (!d) return ''; const s = Math.round((Date.now() - new Date(d)) / 1000); return s < 60 ? 'à l’instant' : s < 3600 ? `il y a ${Math.floor(s / 60)} min` : s < 86400 ? `il y a ${Math.floor(s / 3600)} h` : new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); };
 
-function toast(msg, bad) { logLine((bad ? 'ERREUR ' : '') + msg); if (bad) alert(msg); }
+// ---------- Vues (menu)
+function show(view) {
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
+  document.querySelectorAll('[data-view]').forEach((b) => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  try { localStorage.setItem('lc.view', view); } catch (e) {}
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+show((() => { try { return localStorage.getItem('lc.view') || 'regie'; } catch (e) { return 'regie'; } })());
+
+// ---------- Apparence
+function setTheme(t) {
+  if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  try { t === 'auto' ? localStorage.removeItem('lc.theme') : localStorage.setItem('lc.theme', t); } catch (e) {}
+  document.querySelectorAll('#themeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.theme === t)));
+}
+document.querySelectorAll('#themeSeg button').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+setTheme(document.documentElement.dataset.theme || 'auto');
+
+// ---------- Filtre des réservations
+document.querySelectorAll('#intentSeg button').forEach((b) => b.addEventListener('click', () => {
+  intentFilter = b.dataset.f;
+  document.querySelectorAll('#intentSeg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+}));
+
+// ---------- Messages
+let toastT;
+function toast(msg, bad) {
+  logLine((bad ? 'ERREUR ' : '') + msg);
+  const el = q('#toast'); el.textContent = msg; el.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => { el.className = 'toast' + (bad ? ' bad' : ''); }, bad ? 6000 : 3000);
+}
 function logLine(t) { const el = q('#log'); el.textContent = `${new Date().toLocaleTimeString()} ${t}\n` + el.textContent.slice(0, 20000); }
 
 async function api(path, body) {
@@ -173,7 +402,7 @@ async function get(path) { const r = await fetch(path); const j = await r.json()
 
 async function detectLive() {
   const r = await get('/api/lives');
-  q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button onclick='api("/api/lives/select",${JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title })})'>Suivre ce live</button></div>`).join('') : 'Aucun live en cours sur la Page.';
+  q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><span class="pill live-on">EN DIRECT</span><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button class="primary sm" onclick='api("/api/lives/select",${JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title })})'>Suivre ce live</button></div>`).join('') : '<div class="row">Aucun live en cours sur la Page.</div>';
   refresh();
 }
 
@@ -186,96 +415,141 @@ async function newSession() {
 }
 async function loadSessions() {
   const list = await get('/api/sessions');
-  q('#sessions').innerHTML = list.length ? '<table><tr><th>Session</th><th>Archivée le</th><th>Commentaires</th><th>Réservations</th><th>Confirmées</th><th></th></tr>' +
-    list.map((s) => `<tr><td><b>${esc(s.name)}</b></td><td>${new Date(s.archivedAt).toLocaleString()}</td><td>${s.comments}</td><td>${s.intents}</td><td>${s.confirmed}</td><td><a href="/api/sessions/${s.id}/download">Télécharger</a></td></tr>`).join('') + '</table>'
-    : 'Aucune session archivée.';
+  q('#sessions').innerHTML = list.length ? '<table><thead><tr><th>Session</th><th>Archivée le</th><th>Commentaires</th><th>Réservations</th><th>Confirmées</th><th></th></tr></thead><tbody>' +
+    list.map((s) => `<tr><td class="strong" style="color:var(--ink)">${esc(s.name)}</td><td>${new Date(s.archivedAt).toLocaleString('fr-FR')}</td><td>${s.comments}</td><td>${s.intents}</td><td>${s.confirmed}</td><td><a class="btn sm" href="/api/sessions/${s.id}/download">Télécharger</a></td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">Aucune session archivée.</div>';
 }
 
 async function listPosts() {
   const r = await get('/api/posts');
-  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span>${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString()}</span> <button onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + (p.message || '').slice(0, 30) })})'>Suivre cette publication</button></div>`).join('') : 'Aucune publication sur la Page : publiez-en une puis réessayez.';
+  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span style="color:var(--ink)">${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString('fr-FR')}</span> <button class="sm" onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + (p.message || '').slice(0, 30) })})'>Suivre cette publication</button></div>`).join('') : '<div class="row">Aucune publication sur la Page : publiez-en une puis réessayez.</div>';
 }
 
-async function tryParse() { const t = val('parseTry'); q('#parseOut').textContent = t ? JSON.stringify(await get('/api/parser?text=' + encodeURIComponent(t))) : ''; }
+async function tryParse() {
+  const t = val('parseTry');
+  if (!t) { q('#parseOut').textContent = ''; return; }
+  const r = await get('/api/parser?text=' + encodeURIComponent(t));
+  const kind = { order: 'Commande', plus: 'Réponse +1', ambiguous: 'À préciser', none: 'Pas une commande' }[r.type] ?? r.type;
+  q('#parseOut').innerHTML = `<span class="pill ${r.type === 'order' || r.type === 'plus' ? 'OK' : r.type === 'ambiguous' ? 'PARTIEL' : ''}">${kind}</span> <code>${esc(JSON.stringify(r))}</code>`;
+}
 
 function nextProduct() { currentIdx = (currentIdx + 1) % S.products.length; localStorage.setItem('lc_current', currentIdx); render(); }
 function setCurrent(i) { currentIdx = i; localStorage.setItem('lc_current', i); render(); }
 
 async function copyComment(code) {
   const { text } = await get(`/api/products/${code}/comment`);
-  await navigator.clipboard.writeText(text).then(() => toast(`Commentaire ${code} copié — collez-le dans le live puis épinglez-le`)).catch(() => prompt('Copiez ce texte :', text));
+  await navigator.clipboard.writeText(text).then(() => toast(`Texte ${code} copié — collez-le dans le live puis épinglez-le`)).catch(() => prompt('Copiez ce texte :', text));
 }
 function registerComment(code) {
   const id = prompt("Collez l'id du commentaire publié (ou son lien contenant comment_id=) :");
   if (id) api(`/api/products/${code}/register-comment`, { commentId: id });
 }
 
+function chips(vs) { return vs.map((v) => `<span class="chip ${v.available <= 0 ? 'out' : v.available < 3 ? 'low' : ''}">${esc(v.label)} · ${v.available}</span>`).join(' '); }
+
 function render() {
   if (!S) return;
-  q('#conn').textContent = S.connected ? 'Facebook connecté' : 'Non connecté';
+  q('#conn').textContent = S.connected ? 'Facebook connecté' : 'Facebook non connecté';
   q('#conn').className = 'pill ' + (S.connected ? 'OK' : 'KO');
-  q('#pageSel').innerHTML = '<option value="">— Page —</option>' + S.pages.map((p) => `<option value="${p.id}" ${p.id === S.selectedPageId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  q('#live').textContent = S.activeLive ? `Live : ${S.activeLive.title || S.activeLive.id}` : 'Aucun live';
+  q('#fbBtn').style.display = S.connected ? 'none' : '';
+  q('#pageSel').innerHTML = '<option value="">Choisir une Page…</option>' + S.pages.map((p) => `<option value="${p.id}" ${p.id === S.selectedPageId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  const isPost = S.activeLive && /^Publication/.test(S.activeLive.title || '');
+  q('#live').textContent = S.activeLive ? (isPost ? S.activeLive.title : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucun live suivi';
+  q('#live').className = 'pill' + (S.activeLive ? (isPost ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
+
+  // Chiffres
+  const review = S.intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).length;
+  q('#kComments').textContent = S.comments.length;
+  q('#kIntents').textContent = S.intents.filter((i) => !['REJECTED', 'CANCELLED'].includes(i.status)).length;
+  q('#kReview').textContent = review;
+  q('#kConfirmed').textContent = S.intents.filter((i) => i.status === 'CONFIRMED').length;
+  q('#navReview').textContent = review || '';
+  q('#tabReview').textContent = review ? ` · ${review}` : '';
 
   const st = S.ingestion.stats;
   q('#ingest').innerHTML = `Lecture 5 s : <b>${S.ingestion.polling ? 'active' : 'arrêtée'}</b> · Temps réel : <b>${S.ingestion.sse ? 'actif' : 'arrêté'}</b><br>
-    Uniques ${st.total} · SSE ${st.SSE.received} reçus (from ${st.SSE.withFrom}, parent ${st.SSE.withParent}, latence médiane ${st.SSE.medianLatencyMs ?? '—'} ms)
-    · Polling ${st.POLL.received} (from ${st.POLL.withFrom}, parent ${st.POLL.withParent}) · Webhook ${st.WEBHOOK.received} (parent ${st.WEBHOOK.withParent})`;
+    ${st.total} commentaires uniques · temps réel ${st.SSE.received} reçus (latence médiane ${st.SSE.medianLatencyMs ?? '—'} ms) · lecture 5 s ${st.POLL.received} · webhook ${st.WEBHOOK.received}`;
 
+  // Produit présenté
   const stockOf = (code) => S.stock.find((s) => s.code === code)?.variants ?? [];
-  const p = S.products[currentIdx % S.products.length];
-  const published = S.productComments.filter((c) => c.code === p.code);
-  q('#current').innerHTML = `<div class="product current">
-      <div><b>${p.code} — ${esc(p.name)}</b> · ${mga(p.priceMga)}</div>
-      <div class="muted">${stockOf(p.code).map((v) => `<span class="${v.available < 3 ? 'low' : ''}">${esc(v.label)} : ${v.available}</span>`).join(' · ')}</div>
-      <div class="row">
-        <button class="primary" onclick="api('/api/products/${p.code}/publish').then(r=>toast('Publié : '+r.commentId+' — épinglez-le dans Facebook'))">Publier via l'API</button>
-        <button onclick="copyComment('${p.code}')">Copier le texte</button>
-        <button onclick="registerComment('${p.code}')">J'ai publié à la main</button>
+  const n = S.products.length;
+  if (n) {
+    const i = currentIdx % n, p = S.products[i], next = S.products[(i + 1) % n];
+    const published = S.productComments.filter((c) => c.code === p.code);
+    q('#curPos').textContent = `${i + 1} / ${n}`;
+    q('#nextLabel').textContent = n > 1 ? `Produit suivant : ${next.code}` : 'Produit suivant';
+    q('#current').innerHTML = `
+      <div class="row" style="flex-wrap:nowrap;align-items:flex-start;margin:0 0 10px">
+        <span class="code" style="font-size:16px;padding:4px 10px">${esc(p.code)}</span>
+        <div style="flex:1;min-width:0"><div class="name">${esc(p.name)}</div><div class="strong" style="font-size:18px">${mga(p.priceMga)}</div></div>
       </div>
-      <div class="muted">${published.length ? 'Commentaire(s) produit : ' + published.map((c) => `<code>${c.commentId}</code>`).join(' ') + ' — <b>pensez à l’épingler</b>' : 'Pas encore publié.'}</div>
-    </div>`;
-  q('#playlist').innerHTML = S.products.map((x, i) => `<div class="row"><button onclick="setCurrent(${i})" ${i === currentIdx % S.products.length ? 'disabled' : ''}>${x.code}</button> ${esc(x.name)} <span class="muted">${stockOf(x.code).reduce((a, v) => a + v.available, 0)} dispo</span></div>`).join('');
+      <div class="row">${chips(stockOf(p.code))}</div>
+      <div class="row">
+        <button class="primary" onclick="api('/api/products/${p.code}/publish').then(r=>toast('Publié dans le live — pensez à l’épingler'))">Publier dans le live</button>
+        <button onclick="copyComment('${p.code}')">Copier le texte</button>
+        <button onclick="registerComment('${p.code}')">J’ai publié à la main</button>
+      </div>
+      <div class="muted">${published.length ? `<span class="pill OK">Publié</span> ${published.map((c) => `<code>${esc(c.commentId)}</code>`).join(' ')} — <b>pensez à l’épingler</b>` : 'Pas encore publié dans ce live.'}</div>`;
+    q('#playlist').innerHTML = S.products.map((x, k) => {
+      const dispo = stockOf(x.code).reduce((a, v) => a + v.available, 0);
+      return `<div class="pl"><span class="n">${k + 1}</span><span class="code">${esc(x.code)}</span><span class="t">${esc(x.name)}<br><span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}</span></span>
+        ${k === i ? '<span class="pill AWAIT_CONFIRM">En cours</span>' : `<button class="sm" onclick="setCurrent(${k})">Présenter</button>`}</div>`;
+    }).join('');
+  } else {
+    q('#current').innerHTML = '<div class="empty">Aucun produit.</div>'; q('#playlist').innerHTML = '';
+  }
 
+  // Commentaires
   const intentById = Object.fromEntries(S.intents.map((i) => [i.id, i]));
   const comments = S.comments.filter((c) => !q('#onlyOrders').checked || c.intentId).slice().reverse();
-  q('#ccount').textContent = `${S.comments.length}`;
+  q('#ccount').textContent = `· ${S.comments.length}`;
   q('#comments').innerHTML = comments.map((c) => {
     const i = intentById[c.intentId];
-    return `<div class="item"><b>${esc(c.fromName || 'Anonyme')}</b> ${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}
-      ${i ? `<span class="pill ${i.status}">${fr(i.status)}</span>` : ''}
-      <div class="muted">${c.sources.map(fr).join(' + ')} ${c.parentId ? '· réponse à <code>' + esc(c.parentId) + '</code>' : ''} ${c.latencyMs != null ? '· ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
-  }).join('') || '<p class="muted">Aucun commentaire.</p>';
+    return `<div class="item"><div class="head"><span><b>${esc(c.fromName || 'Anonyme')}</b> <span class="muted">${ago(c.receivedAt)}</span><br>${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}</span>
+      ${i ? `<span class="pill ${i.status}">${fr(i.status)}</span>` : ''}</div>
+      <div class="muted">${c.sources.map(fr).join(' + ')}${c.parentId ? ' · réponse à un commentaire' : ''}${c.latencyMs != null ? ' · ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
+  }).join('') || '<div class="empty">Les commentaires du live apparaîtront ici.</div>';
 
-  q('#intents').innerHTML = S.intents.slice().reverse().map((i) => `<div class="item">
-      <span class="pill ${i.status}">${fr(i.status)}</span> <b>${i.code ?? '?'} ×${i.quantity}${i.variant ? ' ' + esc(i.variant) : ''}</b> — ${esc(i.authorName || '')} « ${esc(i.rawText)} »
-      <div class="muted">${fr(i.matchMethod)}${i.reason ? ' · ' + esc(i.reason) : ''}${i.privateReply ? ' · Message privé <span class="pill ' + i.privateReply.status + '">' + fr(i.privateReply.status) + '</span>' + (i.privateReply.error ? ' ' + esc(i.privateReply.error) : '') : ''}</div>
+  // Réservations
+  const groups = { review: ['NEEDS_REVIEW', 'WAITLISTED'], ok: ['RESERVED', 'CONFIRMED'], closed: ['REJECTED', 'CANCELLED'] };
+  const intents = S.intents.slice().reverse().filter((i) => intentFilter === 'all' || groups[intentFilter].includes(i.status));
+  q('#intents').innerHTML = intents.map((i) => `<div class="item">
+      <div class="head"><span><span class="code">${esc(i.code ?? '?')}</span> <b>× ${i.quantity}${i.variant ? ' · ' + esc(i.variant) : ''}</b> — ${esc(i.authorName || 'Client')}<br><span class="muted">« ${esc(i.rawText)} » · ${fr(i.matchMethod)} · ${ago(i.createdAt)}</span></span>
+        <span class="pill ${i.status}">${fr(i.status)}</span></div>
+      ${i.reason || i.privateReply ? `<div class="muted">${i.reason ? why(i.reason) : ''}${i.privateReply ? `${i.reason ? ' · ' : ''}Message privé <span class="pill ${i.privateReply.status}">${fr(i.privateReply.status)}</span>${i.privateReply.error ? ' ' + esc(i.privateReply.error) : ''}` : ''}</div>` : ''}
       <div class="row">
-        ${['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status) ? `<button onclick="resolve('${i.id}')">Valider…</button>` : ''}
-        ${!['REJECTED', 'CANCELLED'].includes(i.status) ? `<button onclick="api('/api/intents/${i.id}/resolve',{action:'reject'})">Rejeter</button>` : ''}
-        ${i.commentId && i.code && !i.privateReply ? `<button class="primary" onclick="api('/api/intents/${i.id}/private-reply').then(()=>toast('Réponse privée envoyée'))">Réponse privée (T9)</button>` : ''}
-        ${i.privateReply?.status === 'SENT' ? `<button onclick="api('/api/comments/${i.commentId}/second-reply').then(r=>toast(r.accepted?'2e message ACCEPTÉ (inattendu)':'2e message refusé (attendu)'))">Tester 2e message</button>` : ''}
-      </div></div>`).join('') || '<p class="muted">Aucune réservation.</p>';
+        ${['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status) ? `<button class="primary sm" onclick="resolve('${i.id}')">Valider…</button>` : ''}
+        ${i.commentId && i.code && !i.privateReply ? `<button class="primary sm" onclick="api('/api/intents/${i.id}/private-reply').then(()=>toast('Message privé envoyé'))">Envoyer le message privé</button>` : ''}
+        ${!['REJECTED', 'CANCELLED'].includes(i.status) ? `<button class="sm" onclick="api('/api/intents/${i.id}/resolve',{action:'reject'})">Rejeter</button>` : ''}
+        ${i.privateReply?.status === 'SENT' ? `<button class="sm" onclick="api('/api/comments/${i.commentId}/second-reply').then(r=>toast(r.accepted?'2e message ACCEPTÉ (inattendu)':'2e message refusé (attendu)'))">Tester un 2e message</button>` : ''}
+      </div></div>`).join('') || '<div class="empty">Aucune réservation dans ce filtre.</div>';
 
-  q('#convs').innerHTML = S.conversations.map((c) => `<div class="item"><b>${esc(c.customer.name || 'PSID …' + c.psid.slice(-6))}</b> <span class="pill ${c.step === 'DONE' ? 'OK' : ''}">${fr(c.step)}</span>
-      <div class="muted">${esc([c.customer.phone, c.customer.address, c.customer.city, fr(c.customer.payment)].filter(Boolean).join(' · '))}${c.lastInboundAt ? ' · dernier message ' + new Date(c.lastInboundAt).toLocaleTimeString() : ''}</div>
-      <div class="row"><input id="m_${c.psid}" placeholder="Message…" style="flex:1"><button onclick="api('/api/conversations/${c.psid}/message',{text:val('m_${c.psid}')})">Envoyer</button></div></div>`).join('') || '<p class="muted">Aucune conversation liée.</p>';
+  // Messenger
+  q('#convs').innerHTML = S.conversations.map((c) => `<div class="item">
+      <div class="head"><span><b>${esc(c.customer.name || 'Client …' + c.psid.slice(-6))}</b>${c.lastInboundAt ? ` <span class="muted">${ago(c.lastInboundAt)}</span>` : ''}<br><span class="muted">${esc([c.customer.phone, c.customer.address, c.customer.city, fr(c.customer.payment)].filter(Boolean).join(' · ')) || 'Coordonnées pas encore reçues'}</span></span>
+        <span class="pill ${c.step}">${fr(c.step)}</span></div>
+      <div class="row"><input id="m_${c.psid}" placeholder="Écrire au client…" style="flex:1" aria-label="Message"><button class="primary" onclick="api('/api/conversations/${c.psid}/message',{text:val('m_${c.psid}')}).then(()=>toast('Message envoyé'))">Envoyer</button></div></div>`).join('') || '<div class="empty">Aucune conversation Messenger pour l’instant.</div>';
 
-  q('#stock').innerHTML = '<table>' + S.stock.map((s) => `<tr><td><b>${s.code}</b></td><td>${s.variants.map((v) => `${esc(v.label)} : <span class="${v.available < 3 ? 'low' : ''}">${v.available}</span> <span class="muted">(${v.reserved} rés.)</span>`).join(' · ')}</td></tr>`).join('') + '</table>';
+  // Stock
+  q('#stock').innerHTML = S.stock.length ? '<table><thead><tr><th>Produit</th><th>Disponible par taille ou couleur</th><th class="hide-sm">Réservé</th></tr></thead><tbody>' + S.stock.map((s) => {
+    const p = S.products.find((x) => x.code === s.code);
+    return `<tr><td><span class="code">${esc(s.code)}</span> ${esc(p?.name ?? '')}</td><td>${chips(s.variants)}</td><td class="hide-sm muted">${s.variants.reduce((a, v) => a + v.reserved, 0)}</td></tr>`;
+  }).join('') + '</tbody></table>' : '<div class="empty">Aucun produit.</div>';
 
+  // Tests
   q('#tests').innerHTML = S.tests.map((t) => `<tr>
-      <td>${t.id}</td><td>${esc(t.label)}</td>
-      <td><select id="ts_${t.id}">${['A_TESTER', 'OK', 'PARTIEL', 'KO'].map((s) => `<option value="${s}" ${s === t.status ? 'selected' : ''}>${fr(s)}</option>`).join('')}</select> <span class="pill ${t.status}">${fr(t.status)}</span></td>
-      <td><input id="tn_${t.id}" value="${esc(t.note)}" style="width:100%"></td>
-      <td class="muted">${t.evidence.length}</td>
-      <td><button onclick="api('/api/tests/${t.id}',{status:val('ts_${t.id}'),note:val('tn_${t.id}')})">Enregistrer</button></td></tr>`).join('');
-  q('#urls').innerHTML = `OAuth redirect URI : <code>${esc(S.redirectUri)}</code> · Webhook : <code>${esc(S.webhookUrl)}</code>`;
+      <td class="muted">${t.id}</td><td>${esc(t.label)}</td>
+      <td><select id="ts_${t.id}" aria-label="Résultat ${t.id}">${['A_TESTER', 'OK', 'PARTIEL', 'KO'].map((s) => `<option value="${s}" ${s === t.status ? 'selected' : ''}>${fr(s)}</option>`).join('')}</select></td>
+      <td><input id="tn_${t.id}" value="${esc(t.note)}" style="width:100%;min-width:160px" aria-label="Note ${t.id}"></td>
+      <td class="muted hide-sm">${t.evidence.length}</td>
+      <td><button class="sm" onclick="api('/api/tests/${t.id}',{status:val('ts_${t.id}'),note:val('tn_${t.id}')}).then(()=>toast('Test ${t.id} enregistré'))">Enregistrer</button></td></tr>`).join('');
+  q('#urls').innerHTML = `Adresse de retour Facebook : <code>${esc(S.redirectUri)}</code><br>Webhook : <code>${esc(S.webhookUrl)}</code>`;
 }
 
 function resolve(id) {
   const code = prompt('Code produit (ex. JP01) :'); if (!code) return;
-  const variant = prompt('Variante (vide si unique) :') || undefined;
+  const variant = prompt('Taille ou couleur (vide si unique) :') || undefined;
   const quantity = Number(prompt('Quantité :', '1')) || 1;
   api(`/api/intents/${id}/resolve`, { action: 'accept', code: code.toUpperCase(), variant, quantity });
 }

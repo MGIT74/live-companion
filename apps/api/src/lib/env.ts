@@ -13,6 +13,7 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET doit faire au moins 32 caractères'),
   CORS_ORIGIN: z.string().default('*'),
   ALLOW_SIGNUP: z.enum(['true', 'false']).default('true'),
+  WEB_DIR: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

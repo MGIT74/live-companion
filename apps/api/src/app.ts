@@ -1,5 +1,9 @@
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { registerAuth } from './lib/auth.ts';
 import { env } from './lib/env.ts';
@@ -28,5 +32,15 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   await app.register(orderRoutes);
   await app.register(liveRoutes);
   await app.register(statsRoutes);
+
+  // Interface vendeur (apps/web construite) servie par la même origine.
+  const webDir = env.WEB_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
+  if (existsSync(path.join(webDir, 'index.html'))) {
+    await app.register(fastifyStatic, { root: webDir, maxAge: '1h', setHeaders: (res, file) => { if (file.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache'); } });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/v1/') && !req.url.startsWith('/health') && !req.url.startsWith('/assets/')) return reply.type('text/html').header('Cache-Control', 'no-cache').sendFile('index.html');
+      return reply.status(404).send({ error: 'NOT_FOUND', message: 'Route introuvable' });
+    });
+  }
   return app;
 }

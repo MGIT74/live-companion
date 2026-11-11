@@ -95,3 +95,17 @@ Toutes les réponses brutes de Meta sont archivées (jetons masqués) dans `poc/
 ## Licence
 
 Propriétaire — tous droits réservés.
+
+## Interface vendeur (apps/web)
+
+Application web (React + Vite) au style Apple, en clair et en sombre (suit le réglage de l'appareil, ou forcé dans le menu).
+Écrans : tableau de bord, lives et régie (pensée pour le téléphone), commandes (suivi étape par étape, paiements MVola/Orange Money/…, livraison), clients (fiche et historique), catalogue et stock.
+
+```bash
+npm run api            # API CRM sur :4000 (MySQL/MariaDB requis, voir apps/api/.env.example)
+npm run web            # interface sur :5173 (appels /v1 relayés vers l'API)
+npm run db:seed -w apps/api   # données de démonstration : demo@livecompanion.mg / demo1234
+```
+
+En production, l'API sert aussi l'interface construite (`npm run build`) sur la même adresse.
+`docker-compose.app.yml` lance l'ensemble (interface + API + MySQL 8.4) ; le PoC Meta garde son propre `docker-compose.yml`.

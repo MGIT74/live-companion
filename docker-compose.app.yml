@@ -1,0 +1,41 @@
+# Produit Live Companion : interface vendeur + API CRM + MySQL.
+#   docker compose -f docker-compose.app.yml up -d --build
+# Variables (fichier .env) : MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD, JWT_SECRET (32+ caractères), ALLOW_SIGNUP
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    image: live-companion-app:latest
+    pull_policy: build
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://live_companion:${MYSQL_PASSWORD}@db:3306/live_companion
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "127.0.0.1:3048:4000"
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: live_companion
+      MYSQL_USER: live_companion
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  db-data:

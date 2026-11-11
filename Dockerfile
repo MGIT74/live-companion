@@ -8,6 +8,7 @@ COPY package.json package-lock.json ./
 COPY packages/order-parser/package.json packages/order-parser/
 COPY packages/db/package.json packages/db/
 COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
 COPY poc/meta-validation/package.json poc/meta-validation/
 RUN npm ci --include=dev && npm cache clean --force
 

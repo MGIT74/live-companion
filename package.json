@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Live Companion Madagascar — régie de Live Commerce Facebook (PoC Meta)",
   "workspaces": [
+    "apps/*",
     "packages/*",
     "poc/*"
   ],

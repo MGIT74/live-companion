@@ -11,6 +11,7 @@ import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct }
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
 import { deleteProduct, moveProduct, removeProductPhoto, saveProduct, setProductPhoto } from './catalog.ts';
+import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { archiveSession, listSessions, persist, recordTest, resetLiveData, sessionFile, state, TESTS, type TestStatus } from './store.ts';
 
 const app = express();
@@ -59,6 +60,7 @@ app.get('/auth/callback', async (req, res) => {
     });
     persist();
     log('info', `Connexion Facebook OK : ${state.pages.length} Page(s).`);
+    if (state.selectedPageId) await ensureSubscription(); // Messenger activé sans bouton à cliquer
     res.redirect('/');
   } catch (e: any) {
     log('error', `OAuth : ${e.message}`);
@@ -131,6 +133,7 @@ app.get('/api/state', wrap(() => ({
   conversations: Object.values(state.conversations),
   tests: Object.entries(TESTS).map(([id, label]) => ({ id, label, ...state.tests[id] })),
   settings: state.settings,
+  subscription: state.subscription,
   ingestion: { ...ingestionStatus(), stats: ingestionStats() },
   webhookUrl: `${config.baseUrl}/webhooks/meta`,
   redirectUri: redirectUri(),
@@ -140,20 +143,23 @@ app.post('/api/pages/select', wrap((req) => {
   if (!state.pages.some((p) => p.id === req.body.pageId)) throw new Error('Page inconnue');
   state.selectedPageId = req.body.pageId;
   persist();
+  return ensureSubscription();
 }));
 
 // Abonne la Page aux webhooks de l'app (messages, postbacks, feed)
 app.post('/api/pages/subscribe', wrap(async () => {
-  const page = selectedPage();
-  const res = await graph('POST', `${page.id}/subscribed_apps`, page.token, { subscribed_fields: 'messages,messaging_postbacks,feed' });
-  const check = await graph('GET', `${page.id}/subscribed_apps`, page.token);
-  saveEvidence('T10', 'page_subscribed_apps', { res, check });
-  return { res, check };
+  const s = await ensureSubscription(true);
+  saveEvidence('T10', 'page_subscribed_apps', s);
+  if (!s.active) throw new Error(`Activation impossible : ${s.error ?? 'champs manquants ' + s.missing.join(', ')}`);
+  return s;
 }));
+// Vérifie l'abonnement (et le refait s'il a été perdu)
+app.post('/api/pages/subscription/check', wrap(() => ensureSubscription()));
 
 // T3 — live actif
 app.get('/api/lives', wrap(async () => {
   const page = selectedPage();
+  void ensureSubscription(); // avant un live : Messenger doit être actif
   const res = await graph<{ data: any[] }>('GET', `${page.id}/live_videos`, page.token, {
     broadcast_status: '["LIVE"]', fields: 'id,title,status,video{id},permalink_url,creation_time',
   });
@@ -359,6 +365,7 @@ app.get('/report.md', (_req, res) => {
 });
 
 app.listen(config.port, () => {
+  if (state.selectedPageId && state.pages.length) void ensureSubscription(); // vérification au démarrage
   log('info', `PoC Live Companion sur http://localhost:${config.port} (public : ${config.baseUrl})`);
   log('info', `URL de redirection OAuth à déclarer chez Meta : ${redirectUri()}`);
   log('info', `URL de webhook à déclarer chez Meta : ${config.baseUrl}/webhooks/meta`);

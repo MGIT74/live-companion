@@ -74,6 +74,8 @@ export interface State {
   conversations: Record<string, Conversation>;
   tests: Record<string, TestResult>;
   settings: { autoPrivateReply: boolean };
+  /** Dernière vérification de l'abonnement de la Page aux webhooks. */
+  subscription?: { pageId?: string; active: boolean; missing: string[]; checkedAt: string; error?: string };
 }
 
 export const TESTS: Record<string, string> = {

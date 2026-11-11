@@ -145,6 +145,21 @@
   .cur-photo { width:120px; height:120px; flex:none; border-radius:14px; background:var(--fill) center/cover no-repeat; }
   .pick { display:flex; gap:12px; align-items:center; }
   .pick .preview { width:96px; height:96px; flex:none; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); font-size:12px; text-align:center; }
+  .onb { display:flex; flex-direction:column; gap:14px; }
+  .steps { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+  .step { display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:12px; background:var(--fill); min-width:0; }
+  .step .dot { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-weight:700; font-size:14px; background:var(--card); color:var(--muted); box-shadow:inset 0 0 0 1.5px var(--line); }
+  .step.done .dot { background:var(--green); color:#fff; box-shadow:none; }
+  .step.warn { background:var(--orange-bg); }
+  .step.warn .dot { background:var(--orange); color:#fff; box-shadow:none; }
+  .step.next { background:var(--soft); }
+  .step.next .dot { background:var(--accent); color:#fff; box-shadow:none; }
+  .step b { font-size:14px; }
+  .step .muted { font-size:12px; }
+  .step button, .step .btn { min-height:34px; font-size:13px; padding:0 10px; align-self:flex-start; }
+  .bar { height:6px; border-radius:99px; background:var(--fill2); overflow:hidden; }
+  .bar span { display:block; height:100%; background:var(--green); border-radius:99px; transition:width .3s; }
+  @media (max-width: 1100px) { .steps { grid-template-columns:1fr; } .step { flex-direction:row; align-items:center; } .step .txt { flex:1; min-width:0; } }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -192,6 +207,7 @@
       <div class="row" style="margin:0">
         <span id="live" class="pill">Aucun live</span>
         <span id="conn" class="pill">…</span>
+        <span id="msgr"></span>
       </div>
       <div class="row" style="margin:0">
         <a href="/auth/login" class="btn primary" id="fbBtn">Connecter Facebook</a>
@@ -201,6 +217,7 @@
     <!-- ================= Régie ================= -->
     <section class="view" id="v-regie" aria-label="Régie live">
       <h1>Régie live</h1>
+      <div class="card onb" id="onboard" hidden></div>
       <div class="kpis">
         <div class="card kpi"><span class="l">Commentaires</span><span class="v" id="kComments">0</span></div>
         <div class="card kpi"><span class="l">Réservations</span><span class="v" id="kIntents">0</span></div>
@@ -317,9 +334,10 @@
         <h2 style="margin-bottom:10px">Facebook</h2>
         <div class="row">
           <a href="/auth/login" class="btn primary">Connecter Facebook</a>
-          <button onclick="api('/api/pages/subscribe').then(()=>toast('Page abonnée aux webhooks'))">Abonner la Page aux webhooks</button>
+          <button onclick="api('/api/pages/subscribe').then(()=>toast('Messenger activé pour la Page'))">Réactiver Messenger (webhooks)</button>
           <a href="/report.md" target="_blank" class="btn">Rapport</a>
         </div>
+        <p id="subStatus" style="margin:12px 0 0"></p>
         <p class="muted" id="urls"></p>
       </div>
       <div class="card">
@@ -492,6 +510,37 @@ function registerComment(code) {
   if (id) api(`/api/products/${code}/register-comment`, { commentId: id });
 }
 
+// ---------- Guide « Pour bien démarrer »
+async function activateMessenger() {
+  try { await api('/api/pages/subscribe'); toast('Messenger activé pour la Page'); } catch (e) { /* message déjà affiché */ }
+}
+function renderOnboarding(subOk) {
+  const withPhoto = S.products.filter((p) => p.photo).length;
+  const steps = [
+    { t: 'Connecter Facebook', d: 'Autoriser l’app à gérer votre Page.', done: S.connected, action: '<a class="btn primary" href="/auth/login">Connecter</a>' },
+    { t: 'Choisir votre Page', d: 'La Page qui fait les lives.', done: S.connected && !!S.selectedPageId,
+      action: `<select aria-label="Page Facebook" onchange="this.value && api('/api/pages/select',{pageId:this.value})"><option value="">Choisir…</option>${S.pages.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>` },
+    { t: 'Activer Messenger', d: subOk ? 'Fait automatiquement.' : 'Pour recevoir les réponses des clients.', done: subOk, warn: S.connected && !!S.selectedPageId && !subOk, action: '<button class="primary" onclick="activateMessenger()">Activer</button>' },
+    { t: 'Ajouter vos produits', d: S.products.length ? `${S.products.length} produit${S.products.length > 1 ? 's' : ''} · ${withPhoto} avec photo` : 'Avec leur photo et leur stock.', done: S.products.length > 0 && withPhoto === S.products.length, action: '<button class="primary" onclick="show(\'stock\')">Ajouter</button>' },
+    { t: 'Suivre votre live', d: S.activeLive ? 'Live suivi.' : 'Lancez le live puis détectez-le.', done: !!S.activeLive, action: '<button class="primary" onclick="detectLive()">Détecter</button>' },
+  ];
+  const doneCount = steps.filter((x) => x.done).length;
+  const critical = steps.slice(0, 3).some((x) => !x.done);
+  let hidden = false; try { hidden = localStorage.getItem('lc.onboardHidden') === '1'; } catch (e) {}
+  const el = q('#onboard');
+  if (doneCount === steps.length || (hidden && !critical)) { el.hidden = true; return; }
+  const nextIdx = steps.findIndex((x) => !x.done);
+  el.hidden = false;
+  el.innerHTML = `<div class="card-head" style="margin:0"><div><h2>Pour bien démarrer</h2><span class="muted">${doneCount} étape${doneCount > 1 ? 's' : ''} sur ${steps.length}</span></div>
+      ${critical ? '' : '<button class="sm" onclick="try{localStorage.setItem(\'lc.onboardHidden\',\'1\')}catch(e){};render()">Masquer</button>'}</div>
+    <div class="bar" aria-hidden="true"><span style="width:${Math.round(doneCount / steps.length * 100)}%"></span></div>
+    <ol class="steps">${steps.map((x, k) => {
+      const cls = x.done ? 'done' : x.warn ? 'warn' : k === nextIdx ? 'next' : '';
+      return `<li class="step ${cls}"><span class="dot">${x.done ? '✓' : x.warn ? '!' : k + 1}</span>
+        <span class="txt"><b>${x.t}</b><br><span class="muted">${x.d}</span></span>${!x.done && (k === nextIdx || x.warn) ? x.action : ''}</li>`;
+    }).join('')}</ol>`;
+}
+
 function chips(vs) { return vs.map((v) => `<span class="chip ${v.available <= 0 ? 'out' : v.available < 3 ? 'low' : ''}">${esc(v.label)} · ${v.available}</span>`).join(' '); }
 
 function render() {
@@ -504,6 +553,16 @@ function render() {
   q('#live').textContent = S.activeLive ? (isPost ? S.activeLive.title : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucun live suivi';
   q('#live').className = 'pill' + (S.activeLive ? (isPost ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
+
+  // Messenger (abonnement de la Page aux webhooks)
+  const sub = S.subscription, pageOk = S.connected && !!S.selectedPageId;
+  const subOk = pageOk && sub && sub.active && sub.pageId === S.selectedPageId;
+  q('#msgr').innerHTML = !pageOk ? '' : subOk ? '<span class="pill OK">Messenger actif</span>'
+    : `<button class="sm" style="background:var(--orange-bg);color:var(--orange)" onclick="activateMessenger()">Messenger inactif — Réactiver</button>`;
+  q('#subStatus').innerHTML = !pageOk ? '<span class="muted">Connectez Facebook et choisissez une Page : Messenger s’activera tout seul.</span>'
+    : subOk ? `<span class="pill OK">Messenger actif</span> <span class="muted">Vérifié ${ago(sub.checkedAt)}. Rien à faire : l’activation est automatique.</span>`
+    : `<span class="pill PARTIEL">Messenger inactif</span> <span class="muted">${sub?.error ? esc(sub.error) : 'Les messages des clients n’arrivent pas.'}</span>`;
+  renderOnboarding(subOk);
 
   // Chiffres
   const review = S.intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).length;
@@ -698,6 +757,8 @@ const es = new EventSource('/events');
 es.onmessage = (m) => { const e = JSON.parse(m.data); if (e.type === 'log') logLine(e.data.message); refresh(); };
 refresh();
 loadSessions();
+// Vérifie (et rétablit si besoin) l'abonnement Messenger à l'ouverture de l'écran
+fetch('/api/pages/subscription/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(() => refresh()).catch(() => {});
 </script>
 </body>
 </html>

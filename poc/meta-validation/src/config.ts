@@ -1,8 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// .env du dossier PoC en priorité, puis celui de la racine du dépôt (hébergement xCloud).
+dotenv.config({ path: [path.join(root, '.env'), path.join(root, '..', '..', '.env')] });
 
 function required(name: string): string {
   const v = process.env[name];

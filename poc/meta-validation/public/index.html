@@ -58,6 +58,36 @@
   .tabbar .count { position:absolute; top:2px; left:calc(50% + 6px); font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; padding:0 5px; border-radius:999px; background:var(--red); color:#fff; text-align:center; }
   .tabbar .count:empty { display:none; }
 
+  /* ---------- Fiche client : tiroir à droite (plein écran sur téléphone) */
+  .drawer { position:fixed; inset:0; z-index:70; }
+  .drawer-bg { position:absolute; inset:0; background:rgba(0,0,0,.32); animation:dfade .2s ease; }
+  .drawer-panel { position:absolute; top:0; right:0; bottom:0; width:100%; background:var(--bg); overflow-y:auto; display:flex; flex-direction:column; gap:16px;
+    padding:calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); box-shadow:-20px 0 60px rgba(0,0,0,.25); animation:dslide .25s cubic-bezier(.2,.8,.2,1); }
+  @keyframes dslide { from { transform:translateX(100%); } to { transform:none; } }
+  @keyframes dfade { from { opacity:0; } to { opacity:1; } }
+  .drawer-top { position:sticky; top:0; z-index:2; margin:calc(-14px - env(safe-area-inset-top)) -16px 0; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; background:var(--bg); display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid var(--sep); }
+  .drawer-top .x { width:38px; min-height:38px; padding:0; border-radius:50%; }
+  .dh { display:flex; align-items:center; gap:14px; }
+  .dh .avatar { width:56px; height:56px; font-size:20px; flex:none; }
+  .dh h2 { font-size:22px; letter-spacing:-.02em; }
+  .dstats { display:grid; grid-template-columns:1fr 1fr; background:var(--card); border-radius:16px; box-shadow:var(--shadow); }
+  .dstats > div { padding:14px 16px; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .dstats > div:nth-child(even) { border-left:1px solid var(--sep); } .dstats > div:nth-child(n+3) { border-top:1px solid var(--sep); }
+  .dstats .l { font-size:13px; color:var(--muted); } .dstats .v { font-size:20px; font-weight:700; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .dstats .h { font-size:12px; color:var(--muted); }
+  .dsec { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:4px 16px; }
+  .dsec h3 { margin:12px 0 4px; font-size:15px; }
+  .dline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--sep); font-size:14px; }
+  .dsec h3 + .dline { border-top:0; }
+  .dline .k { color:var(--muted); flex:none; }
+  .dline .r { text-align:right; min-width:0; }
+  .dline .r b { white-space:nowrap; }
+  .drawer-panel:focus { outline:none; }
+  body.drawer-open { overflow:hidden; }
+  @media (min-width: 700px) {
+    .drawer-panel { width:min(560px, 92vw); padding:calc(18px + env(safe-area-inset-top)) 22px 28px; border-radius:20px 0 0 20px; }
+    .drawer-top { margin:-18px -22px 0; padding:14px 22px 12px; border-radius:20px 0 0 0; }
+  }
+
   /* ---------- Compte à activer / suspendu (mobile d'abord) */
   body.locked .shell, body.locked .tabbar, body.checking .shell, body.checking .tabbar { filter:blur(10px); opacity:.55; pointer-events:none; user-select:none; }
   body.locked { overflow:hidden; }
@@ -576,7 +606,6 @@
         </div>
       </div>
       <div class="card" style="padding:8px 20px"><div id="clList" class="table-wrap"><div class="empty">Chargement…</div></div></div>
-      <div id="clDetail" hidden></div>
     </section>
 
     <!-- ================= Messenger ================= -->
@@ -679,6 +708,7 @@
     <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Plus</button>
   </nav>
 </div>
+<div class="drawer" id="clDrawer" hidden><div class="drawer-bg" onclick="closeClient()"></div><aside class="drawer-panel" id="clDetail" tabindex="-1" role="dialog" aria-modal="true" aria-label="Fiche client"></aside></div>
 <div class="lock" id="lockScreen" hidden role="dialog" aria-modal="true" aria-labelledby="lockTitle"><div class="lock-card" id="lockCard"></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <dialog id="askDlg" class="ask" aria-labelledby="askTitle">
@@ -1396,7 +1426,7 @@ document.addEventListener('click', () => document.querySelectorAll('.vd-menu').f
 function vdPanel() {
   const { d } = VD, l = d.summary;
   if (vdTab === 'orders') return d.sales.length ? `<div class="vthead"><span>Client</span><span>Produit</span><span>Heure</span><span class="r">Montant</span><span>Statut</span><span></span></div>` +
-    d.sales.map((x) => `<div class="vtrow" onclick="show('clients');openClient('${vdCustomerKey(x.customer)}')">
+    d.sales.map((x) => `<div class="vtrow" onclick="openClient('${vdCustomerKey(x.customer)}')">
       <span class="who"><span class="avatar">${esc(initials(x.customer))}</span><span><b>${esc(x.customer)}</b><br><span class="muted">${esc([x.phone, x.city, fr(x.payment)].filter(Boolean).join(' · ') || 'coordonnées à venir')}</span></span></span>
       <span class="vpr"><span class="code">${esc(x.code)}</span> ${esc(x.name)}${x.variant ? ' · ' + esc(x.variant) : ''}${x.quantity > 1 ? ' × ' + x.quantity : ''}</span>
       <span class="tm muted">${dt(x.at)}</span><span class="amt">${mga(x.amount)}</span><span class="st"><span class="pill ${x.status}">${fr(x.status)}</span></span><span class="chev">›</span></div>`).join('')
@@ -1420,7 +1450,7 @@ function vdPanel() {
   }
   if (vdTab === 'comments') return d.comments.map((c) => `<div class="vline"><span><b>${esc(c.from)}</b> <span class="muted">${dt(c.at)}</span><br>${esc(c.message)}</span>${c.status ? `<span class="pill ${c.status}">${fr(c.status)}</span>` : ''}</div>`).join('') || '<div class="vempty">Aucun commentaire.</div>';
   if (vdTab === 'products') return d.products.map((p) => `<div class="vline"><span class="row" style="margin:0;flex-wrap:nowrap;gap:12px"><span class="ph" style="width:44px;height:44px;border-radius:10px;flex:none;background:var(--fill) center/cover;${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}"></span><span><span class="code">${esc(p.code)}</span> <b>${esc(p.name)}</b><br><span class="muted">${mga(p.priceMga)}${l.current && p.variants?.length ? ' · ' : ''}</span>${l.current ? chips(p.variants || []) : ''}</span></span><span style="text-align:right"><b>${p.sold} vendu${p.sold > 1 ? 's' : ''}</b>${p.pending ? `<br><span class="muted">${p.pending} en attente</span>` : ''}</span></div>`).join('') || '<div class="vempty">Aucun produit pour cette vente.</div>';
-  return d.customers.map((c) => `<div class="vline clickrow" style="cursor:pointer" onclick="show('clients');openClient('${vdCustomerKey(c.name)}')"><span class="row" style="margin:0;flex-wrap:nowrap;gap:12px"><span class="avatar">${esc(initials(c.name))}</span><b>${esc(c.name)}</b></span><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') || '<div class="vempty">Aucun client confirmé pour l’instant.</div>';
+  return d.customers.map((c) => `<div class="vline clickrow" style="cursor:pointer" onclick="openClient('${vdCustomerKey(c.name)}')"><span class="row" style="margin:0;flex-wrap:nowrap;gap:12px"><span class="avatar">${esc(initials(c.name))}</span><b>${esc(c.name)}</b></span><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') || '<div class="vempty">Aucun client confirmé pour l’instant.</div>';
 }
 function vdReason(i) {
   const r = String(i.reason || '');
@@ -1465,30 +1495,28 @@ async function loadClients() {
 }
 async function openClient(key) {
   const c = await get(`/api/customers/${key}`);
-  const el = q('#clDetail'); el.hidden = false;
-  el.innerHTML = `<div class="card">
-      <div class="card-head"><div class="cl-head"><span class="avatar lg">${esc(initials(c.name))}</span><div><h2 style="font-size:22px">${esc(c.name)}</h2><span class="muted">Client depuis ${dt(c.firstOrderAt, false)} · ${c.lives} live${c.lives > 1 ? 's' : ''}${c.messenger ? ' · joignable sur Messenger' : ''}</span></div></div>
-        <div class="row" style="margin:0">${c.phone ? `<a class="btn" href="tel:${esc(c.phone)}">Appeler</a>` : ''}<button class="sm" onclick="q('#clDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
-      <div class="kpis" style="margin-bottom:16px">
-        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Total acheté</span><span class="v">${mga(c.revenueMga)}</span><span class="h">${c.confirmed} commande${c.confirmed > 1 ? 's' : ''} confirmée${c.confirmed > 1 ? 's' : ''}</span></div>
-        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Panier moyen</span><span class="v">${mga(c.averageBasketMga)}</span><span class="h">${c.itemsBought} article${c.itemsBought > 1 ? 's' : ''}</span></div>
-        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">En attente</span><span class="v">${mga(c.pendingMga)}</span><span class="h">pas encore confirmé</span></div>
-        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Annulations</span><span class="v">${c.cancelled}</span><span class="h">${c.cancelled >= 2 ? 'à surveiller' : 'client fiable'}</span></div>
-      </div>
-      <div class="grid cols-2">
-        <div><h2 style="margin-bottom:8px">Coordonnées</h2>
-          <div style="display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;font-size:14px">
-            <span class="muted">Téléphone</span><span>${esc(c.phone || '—')}</span>
-            <span class="muted">Adresse</span><span>${esc([c.address, c.city].filter(Boolean).join(', ') || '—')}</span>
-            <span class="muted">Paiement</span><span>${esc(fr(c.payment) || '—')}</span>
-          </div></div>
-        <div><h2 style="margin-bottom:6px">Ce qu’il achète</h2>${c.favoriteProducts.length ? c.favoriteProducts.map((p) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span class="muted">× ${p.quantity}</span></div>`).join('') : '<span class="muted">Rien de confirmé pour l’instant.</span>'}</div>
-      </div>
-      <h2 style="margin:18px 0 6px">Historique des commandes</h2>
-      <div class="table-wrap"><table><thead><tr><th>Date</th><th class="hide-sm">Live</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${c.history.map((h) => `<tr><td>${dt(h.at)}</td><td class="hide-sm">${esc(h.live)}${h.current ? ' <span class="pill live-on">EN COURS</span>' : ''}</td><td><span class="code">${esc(h.code)}</span> ${esc(h.name)} × ${h.quantity}${h.variant ? ' · ' + esc(h.variant) : ''}</td><td><span class="pill ${h.status}">${fr(h.status)}</span></td><td>${mga(h.amount)}</td></tr>`).join('')}</tbody></table></div>
-    </div>`;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const el = q('#clDetail'); q('#clDrawer').hidden = false; document.body.classList.add('drawer-open');
+  const cancelled = c.cancelled >= 2 ? 'à surveiller' : 'client fiable';
+  el.innerHTML = `
+    <div class="drawer-top"><b>Fiche client</b><span class="row" style="margin:0;gap:8px">${c.phone ? `<a class="btn sm" href="tel:${esc(c.phone)}">Appeler</a>` : ''}<button class="x" onclick="closeClient()" aria-label="Fermer la fiche">✕</button></span></div>
+    <div class="dh"><span class="avatar">${esc(initials(c.name))}</span><div style="min-width:0"><h2>${esc(c.name)}</h2><span class="muted" style="font-size:14px">Client depuis ${dt(c.firstOrderAt, false)} · ${c.lives} live${c.lives > 1 ? 's' : ''}${c.messenger ? ' · joignable sur Messenger' : ''}</span></div></div>
+    <div class="dstats">
+      <div><span class="l">Total acheté</span><span class="v">${mga(c.revenueMga)}</span><span class="h">${c.confirmed} commande${c.confirmed > 1 ? 's' : ''} confirmée${c.confirmed > 1 ? 's' : ''}</span></div>
+      <div><span class="l">Panier moyen</span><span class="v">${mga(c.averageBasketMga)}</span><span class="h">${c.itemsBought} article${c.itemsBought > 1 ? 's' : ''}</span></div>
+      <div><span class="l">En attente</span><span class="v" style="${c.pendingMga ? 'color:var(--orange)' : ''}">${mga(c.pendingMga)}</span><span class="h">pas encore confirmé</span></div>
+      <div><span class="l">Annulations</span><span class="v">${c.cancelled}</span><span class="h">${cancelled}</span></div>
+    </div>
+    <div class="dsec"><h3>Coordonnées</h3>
+      <div class="dline"><span class="k">Téléphone</span><span class="r">${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : '—'}</span></div>
+      <div class="dline"><span class="k">Adresse</span><span class="r">${esc([c.address, c.city].filter(Boolean).join(', ') || '—')}</span></div>
+      <div class="dline"><span class="k">Paiement</span><span class="r">${esc(fr(c.payment) || '—')}</span></div></div>
+    <div class="dsec"><h3>Ce qu’il achète</h3>${c.favoriteProducts.length ? c.favoriteProducts.map((p) => `<div class="dline"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span class="muted">× ${p.quantity}</span></div>`).join('') : '<div class="dline"><span class="muted">Rien de confirmé pour l’instant.</span></div>'}</div>
+    <div class="dsec"><h3>Historique des commandes · ${c.history.length}</h3>${c.history.map((h) => `<div class="dline" style="align-items:flex-start"><span style="min-width:0"><span class="code">${esc(h.code)}</span> ${esc(h.name)} × ${h.quantity}${h.variant ? ' · ' + esc(h.variant) : ''}<br><span class="muted" style="font-size:13px">${dt(h.at)} · ${esc(h.live)}${h.current ? ' · en cours' : ''}</span></span><span class="r"><b>${mga(h.amount)}</b><br><span class="pill ${h.status}">${fr(h.status)}</span></span></div>`).join('')}</div>`;
+  el.scrollTop = 0;
+  el.focus({ preventScroll: true });
 }
+function closeClient() { q('#clDrawer').hidden = true; document.body.classList.remove('drawer-open'); }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !q('#clDrawer').hidden) closeClient(); });
 
 // ---------- Mon compte
 let ME = null;

@@ -35,6 +35,8 @@ export interface LiveSummary {
   sessionId: string; objectId: string; kind: SaleKind; picture?: string; permalink?: string; active: boolean;
   /** Live terminé (ou publication remplacée) dont la rediffusion est encore lue jusqu'à cette date. */
   replayUntil?: string;
+  /** Terminée par le vendeur : ne prend plus de commandes. */
+  closedAt?: string;
   startedAt?: string; endedAt?: string;
   comments: number; reservations: number; confirmed: number; cancelled: number; toValidate: number;
   revenueMga: number; pendingMga: number; customers: number; itemsSold: number;
@@ -125,10 +127,11 @@ function summarize(s: Snapshot, current: boolean, objectId: string): LiveSummary
   return {
     id: `${s.summary.id}~${objectId}`, name: info.title, current,
     sessionId: s.summary.id, objectId, kind: info.kind, picture: info.picture, permalink: info.permalink,
-    active: current && state.activeLive?.id === objectId,
+    active: current && state.activeLive?.id === objectId && !info.closedAt,
     startedAt: times[0] ?? info.createdTime ?? (info.followedAt || undefined),
     endedAt: current ? info.endedAt : s.summary.archivedAt || times.at(-1),
-    replayUntil: current && info.endedAt && Date.now() - new Date(info.endedAt).getTime() < 7 * 86_400_000
+    closedAt: info.closedAt,
+    replayUntil: current && !info.closedAt && info.endedAt && Date.now() - new Date(info.endedAt).getTime() < 7 * 86_400_000
       ? new Date(new Date(info.endedAt).getTime() + 7 * 86_400_000).toISOString() : undefined,
     comments: comments.length,
     reservations: sales.length,

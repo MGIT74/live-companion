@@ -747,7 +747,7 @@ function render() {
   const isPost = S.activeLive && (fol ? fol.kind !== 'live' : /^Publication/.test(S.activeLive.title || ''));
   if (S.activeLive && /^Publication\s*:\s*$/.test(S.activeLive.title || '')) S.activeLive.title = 'Publication sans texte';
   const ended = fol?.endedAt;
-  q('#live').textContent = S.activeLive && ended && !isPost ? `Live terminé · rediffusion lue · ${S.activeLive.title}` : S.activeLive ? (isPost ? `${fol ? (KIND[fol.kind] || KIND.post)[1] : 'Publication'} suivi · ${S.activeLive.title}` : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucune vente suivie';
+  q('#live').textContent = S.activeLive && fol?.closedAt ? `Vente terminée · ${S.activeLive.title}` : S.activeLive && ended && !isPost ? `Live terminé · rediffusion lue · ${S.activeLive.title}` : S.activeLive ? (isPost ? `${fol ? (KIND[fol.kind] || KIND.post)[1] : 'Publication'} suivi · ${S.activeLive.title}` : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucune vente suivie';
   q('#live').className = 'pill' + (S.activeLive ? (isPost || ended ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
 
@@ -1100,9 +1100,12 @@ const kindPill = (k) => `<span class="kind ${(KIND[k] || KIND.post)[0]}">${(KIND
 const vthumb = (l, lg) => `<span class="vthumb${lg ? ' lg' : ''}" style="${l.picture ? `background-image:url('${esc(l.picture)}')` : ''}">${l.picture ? '' : KIND_ICON[l.kind] || KIND_ICON.post}</span>`;
 function livesTable(list, emptyText) {
   if (!list.length) return `<div class="empty">${emptyText}</div>`;
-  return `<table><thead><tr><th>Vente</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th class="hide-sm">Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
-    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><div class="row" style="margin:0;flex-wrap:nowrap">${vthumb(l)}<span>${kindPill(l.kind)}${l.active && !l.replayUntil ? ' <span class="pill live-on">EN COURS</span>' : ''}${l.replayUntil ? ` <span class="pill AWAIT_CONFIRM" title="Les commentaires continuent d’être lus jusqu’au ${dt(l.replayUntil)}">${l.kind === 'live' ? 'Terminé · rediffusion lue' : 'Commentaires encore lus'}</span>` : ''}${l.current && !l.active && !l.replayUntil ? ' <span class="pill">Non archivée</span>' : ''}<br><b style="color:var(--ink)">${esc(l.name)}</b><br><span class="muted">${livePeriod(l)}</span></span></div></td>
-      <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td class="hide-sm">${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
+  return `<table><thead><tr><th>Vente</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th class="hide-sm">Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th><th><span class="sr">Action</span></th></tr></thead><tbody>` +
+    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><div class="row" style="margin:0;flex-wrap:nowrap">${vthumb(l)}<span>${kindPill(l.kind)}${l.closedAt ? ` <span class="pill KO" title="Terminée le ${dt(l.closedAt)}">Terminée · plus de commandes</span>` : ''}${l.active && !l.replayUntil ? ' <span class="pill live-on">EN COURS</span>' : ''}${l.replayUntil ? ` <span class="pill AWAIT_CONFIRM" title="Les commentaires continuent d’être lus jusqu’au ${dt(l.replayUntil)}">${l.kind === 'live' ? 'Terminé · rediffusion lue' : 'Commentaires encore lus'}</span>` : ''}${l.current && !l.active && !l.replayUntil && !l.closedAt ? ' <span class="pill">Ouverte</span>' : ''}<br><b style="color:var(--ink)">${esc(l.name)}</b><br><span class="muted">${livePeriod(l)}</span></span></div></td>
+      <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td class="hide-sm">${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td>
+      <td onclick="event.stopPropagation()" style="text-align:right">${!l.current ? '' : l.closedAt
+        ? `<button class="sm" onclick="reopenSale('${esc(l.objectId)}')">Rouvrir</button>`
+        : `<button class="sm danger" onclick="closeSale('${esc(l.objectId)}')">Terminer</button>`}</td></tr>`).join('') + '</tbody></table>';
 }
 async function loadStats() {
   if (PR.key !== 'custom') { const [a, b] = presetRange(PR.key); PR.start = a; PR.end = b; } // « Aujourd'hui » reste aujourd'hui
@@ -1130,6 +1133,14 @@ async function loadStats() {
 }
 
 // ---------- Ventes en ligne
+async function closeSale(id) {
+  const name = vtList.find((x) => x.objectId === id && x.current)?.name || 'cette vente';
+  if (!confirm(`Terminer « ${name} » ?\n\nPlus aucune commande ne sera prise sur cette vente (commentaires ni saisie rapide). Les commandes déjà passées restent, et les clients peuvent encore confirmer sur Messenger.`)) return;
+  await api(`/api/sales/${encodeURIComponent(id)}/close`); toast('Vente terminée : elle ne prend plus de commandes'); loadLives();
+}
+async function reopenSale(id) {
+  await api(`/api/sales/${encodeURIComponent(id)}/reopen`); toast('Vente rouverte : les commandes sont de nouveau prises'); loadLives();
+}
 var vtKind = 'all', vtList = [];
 document.querySelectorAll('#vtSeg button').forEach((b) => b.addEventListener('click', () => {
   vtKind = b.dataset.k;

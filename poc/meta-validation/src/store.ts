@@ -71,6 +71,8 @@ export interface Followed {
   videoId?: string;
   /** Live : fin détectée sur Facebook. Publication : moment où une autre vente a pris sa place. */
   endedAt?: string;
+  /** Vente terminée par le vendeur : plus aucune commande n'est prise (commentaires seulement gardés). */
+  closedAt?: string;
 }
 
 export type TestStatus = 'A_TESTER' | 'OK' | 'KO' | 'PARTIEL';

@@ -20,10 +20,10 @@ export interface WatchedSale { id: string; targets: string[]; followed?: Followe
 export function watchedSales(): WatchedSale[] {
   const out: WatchedSale[] = [];
   const a = state.activeLive;
-  if (a) out.push({ id: a.id, targets: [a.id, a.videoId ?? state.followed?.[a.id]?.videoId].filter(Boolean) as string[], followed: state.followed?.[a.id], active: true });
+  if (a && !state.followed?.[a.id]?.closedAt) out.push({ id: a.id, targets: [a.id, a.videoId ?? state.followed?.[a.id]?.videoId].filter(Boolean) as string[], followed: state.followed?.[a.id], active: true });
   const limit = Date.now() - REPLAY_DAYS * 86_400_000;
   for (const f of Object.values(state.followed ?? {})) {
-    if (f.id === a?.id || !f.endedAt || new Date(f.endedAt).getTime() < limit) continue;
+    if (f.id === a?.id || f.closedAt || !f.endedAt || new Date(f.endedAt).getTime() < limit) continue;
     out.push({ id: f.id, targets: [f.id, f.videoId].filter(Boolean) as string[], followed: f, active: false });
   }
   return out;
@@ -63,7 +63,7 @@ async function tickShop(shopId: string) {
     'GET', `${page.id}/live_videos`, page.token, { broadcast_status: '["LIVE"]', fields: 'id,title,video{id},permalink_url,creation_time' },
   ).catch(() => undefined);
   const live = lives?.data?.[0];
-  if (live && live.id !== state.activeLive?.id && !state.followed?.[live.id]?.endedAt) {
+  if (live && live.id !== state.activeLive?.id && !state.followed?.[live.id]?.endedAt && !state.followed?.[live.id]?.closedAt) {
     // L'ancienne vente (publication ou live terminé) reste lue en rediffusion.
     const prev = state.activeLive;
     if (prev) {

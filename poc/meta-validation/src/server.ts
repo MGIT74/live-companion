@@ -229,6 +229,7 @@ function followObject(o: { id: string; videoId?: string; title?: string; kind?: 
     followedAt: prev?.followedAt ?? new Date().toISOString(),
     videoId: o.videoId ?? prev?.videoId,
     endedAt: undefined, // re-suivie : redevient la vente en cours
+    closedAt: undefined,
   };
   persist();
   return state.activeLive;
@@ -275,7 +276,57 @@ async function enrichFollowed() {
     if (!f && !/^Publication/.test(a.title ?? '')) { state.followed ??= {}; state.followed[a.id] = { id: a.id, kind: 'live', title: a.title ?? 'Live', followedAt: new Date().toISOString() }; persist(); }
   }
 }
-app.get('/api/lives/history', wrap(async () => { await enrichFollowed(); return livesHistory(); }));
+/** Anciennes ventes sans fiche (« Vente sans titre ») : titre, type et image demandés à Facebook. */
+async function enrichUnknown() {
+  if (!state.selectedPageId || !state.userTokenEnc) return;
+  const ids = new Set<string>();
+  for (const c of Object.values(state.comments)) if (c.liveVideoId) ids.add(c.liveVideoId);
+  for (const i of state.intents) if (i.liveVideoId) ids.add(i.liveVideoId);
+  const missing = [...ids].filter((id) => !state.followed?.[id] && id !== state.activeLive?.id).slice(0, 10);
+  if (!missing.length) return;
+  const page = selectedPage();
+  state.followed ??= {};
+  for (const id of missing) {
+    const live = await graph<any>('GET', id, page.token, { fields: 'title,status,permalink_url,creation_time,video{id}' }).catch(() => undefined);
+    if (live && (live.status || live.video)) {
+      state.followed[id] = { id, kind: 'live', title: live.title || `Live du ${live.creation_time ? new Date(live.creation_time).toLocaleDateString('fr-FR') : '—'}`, videoId: live.video?.id,
+        permalink: live.permalink_url ? `https://www.facebook.com${live.permalink_url}` : undefined, createdTime: live.creation_time, followedAt: live.creation_time ?? new Date().toISOString(), endedAt: live.status === 'LIVE' ? undefined : new Date().toISOString() };
+      continue;
+    }
+    const post = await graph<any>('GET', id, page.token, { fields: 'message,full_picture,permalink_url,created_time,attachments{media_type}' }).catch(() => undefined);
+    if (post) {
+      const mt = String(post.attachments?.data?.[0]?.media_type ?? '').toLowerCase();
+      const kind = mt === 'video' ? 'video' : mt === 'photo' || mt === 'album' ? 'photo' : 'post';
+      state.followed[id] = { id, kind, title: (post.message || '').trim().slice(0, 60) || `Publication du ${post.created_time ? new Date(post.created_time).toLocaleDateString('fr-FR') : '—'}`,
+        picture: post.full_picture, permalink: post.permalink_url, createdTime: post.created_time, followedAt: post.created_time ?? new Date().toISOString(), endedAt: new Date().toISOString() };
+    }
+  }
+  persist();
+}
+app.get('/api/lives/history', wrap(async () => { await enrichFollowed(); await enrichUnknown(); return livesHistory(); }));
+
+/** Terminer une vente : elle ne prend plus de commandes (les commandes déjà passées restent, Messenger continue). */
+app.post('/api/sales/:id/close', wrap((req) => {
+  const id = req.params.id;
+  state.followed ??= {};
+  const f = state.followed[id] ?? { id, kind: 'live' as const, title: state.activeLive?.id === id ? state.activeLive.title || 'Vente' : 'Vente', followedAt: new Date().toISOString() };
+  f.closedAt = new Date().toISOString();
+  f.endedAt ??= f.closedAt;
+  state.followed[id] = f;
+  if (state.activeLive?.id === id) { stopPolling(); stopSse(); }
+  persist();
+  log('info', `Vente « ${f.title} » terminée : plus aucune commande ne sera prise.`);
+  return f;
+}));
+app.post('/api/sales/:id/reopen', wrap((req) => {
+  const f = state.followed?.[req.params.id];
+  if (!f) throw new Error('Vente introuvable');
+  f.closedAt = undefined;
+  f.endedAt = new Date().toISOString(); // à nouveau lue pendant 7 jours
+  persist();
+  log('info', `Vente « ${f.title} » rouverte : les nouvelles commandes sont de nouveau prises.`);
+  return f;
+}));
 app.get('/api/customers', wrap((req) => listCustomers(String(req.query.q ?? ''), String(req.query.sort ?? 'recent'))));
 app.get('/api/customers/:key', wrap((req) => customerDetail(req.params.key)));
 app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));
@@ -387,6 +438,7 @@ app.post('/api/report/parser', wrap(() => {
 // Intentions / réservations
 app.post('/api/intents/manual', wrap((req) => {
   if (!state.activeLive) throw new Error('Sélectionnez d’abord un live (ou saisissez un id quelconque).');
+  if (state.followed?.[state.activeLive.id]?.closedAt) throw new Error('Cette vente est terminée : rouvrez-la dans « Ventes en ligne » pour prendre de nouvelles commandes.');
   const text = String(req.body.text ?? '');
   const parsed = parseOrder(text, parseOptions());
   const intent = handleParsed(undefined, state.activeLive.id, text, parsed, 'MANUAL');

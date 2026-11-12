@@ -105,7 +105,8 @@ export function ingestComment(raw: RawComment, liveVideoId: string, source: Sour
   // Les commentaires publiés par la Page elle-même ne sont pas des commandes.
   const isPageComment = comment.fromId && comment.fromId === state.selectedPageId;
   const isProductComment = state.productComments.some((pc) => pc.commentId === comment.id);
-  if (!isPageComment && !isProductComment) {
+  const closed = Boolean(state.followed?.[liveVideoId]?.closedAt);
+  if (!isPageComment && !isProductComment && !closed) {
     // « Répondre » sur Facebook ajoute le nom tagué en tête (« Hands Graphic +1 ») : on le retire avant d'analyser.
     const names = [state.pages.find((p) => p.id === state.selectedPageId)?.name ?? '', comment.parentId ? state.comments[comment.parentId]?.fromName ?? '' : ''];
     const clean = stripMentions(comment.message, raw.message_tags, names);
@@ -125,7 +126,7 @@ export function reparseComments() {
   const pageName = state.pages.find((p) => p.id === state.selectedPageId)?.name ?? '';
   let created = 0;
   for (const c of Object.values(state.comments)) {
-    if (c.intentId || c.fromId === state.selectedPageId || state.productComments.some((pc) => pc.commentId === c.id)) continue;
+    if (c.intentId || c.fromId === state.selectedPageId || state.productComments.some((pc) => pc.commentId === c.id) || state.followed?.[c.liveVideoId]?.closedAt) continue;
     const clean = stripMentions(c.message, [], [pageName, c.parentId ? state.comments[c.parentId]?.fromName ?? '' : '']);
     const parsed = parseOrder(clean, parseOptions());
     if (parsed.type === 'none') continue;

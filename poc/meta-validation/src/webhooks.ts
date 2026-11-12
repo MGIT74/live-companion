@@ -4,6 +4,7 @@ import { verifyMetaSignature } from './crypto.ts';
 import { log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { ingestComment } from './ingestion.ts';
+import { watchedSales } from './watcher.ts';
 import { handleInboundMessage } from './messenger.ts';
 import { recordTest, runInShop, shopForPage, state } from './store.ts';
 
@@ -52,20 +53,19 @@ function handleEntry(entry: any) {
       if (v.item !== 'comment' || v.verb !== 'add') continue;
       const file = saveEvidence('T7', 'webhook_feed_comment', change);
       recordTest('T7', { evidenceFile: file });
-      const live = state.activeLive;
-      if (!live) continue;
-      // post_id = "<pageId>_<objectId>". On n'ingère que les commentaires du live suivi.
+      // post_id = "<pageId>_<objectId>". On n'ingère que les commentaires des ventes suivies
+      // (la vente en cours + les lives terminés / publications des 7 derniers jours : rediffusions).
       const postId = String(v.post_id ?? '');
       const objectId = postId.split('_').pop();
-      const targets = [live.id, live.videoId].filter(Boolean) as string[];
-      if (!targets.some((t) => t === postId || t === objectId || t.split('_').pop() === objectId)) continue;
+      const sale = watchedSales().find((w) => w.targets.some((t) => t === postId || t === objectId || t.split('_').pop() === objectId));
+      if (!sale) continue;
       ingestComment({
         id: v.comment_id,
         message: v.message,
         created_time: v.created_time ? new Date(v.created_time * 1000).toISOString() : undefined,
         from: v.from,
         parent_id: v.parent_id && v.parent_id !== v.post_id ? v.parent_id : undefined,
-      }, live.id, 'WEBHOOK');
+      }, sale.id, 'WEBHOOK');
     }
   }
 }

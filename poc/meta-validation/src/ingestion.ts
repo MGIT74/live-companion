@@ -138,7 +138,8 @@ export function reparseComments() {
 
 // ---------------------------------------------------------------- Polling (T4)
 
-export async function pollOnce(objectId: string) {
+/** Lit les commentaires d'un objet Facebook. `saleId` = vente à laquelle les rattacher (par défaut la vente suivie). */
+export async function pollOnce(objectId: string, saleId?: string) {
   const page = selectedPage();
   const res = await graph<{ data: RawComment[] }>('GET', `${objectId}/comments`, page.token, {
     filter: 'stream',
@@ -147,7 +148,7 @@ export async function pollOnce(objectId: string) {
     fields: COMMENT_FIELDS,
     limit: 100,
   });
-  const liveId = state.activeLive?.id ?? objectId;
+  const liveId = saleId ?? state.activeLive?.id ?? objectId;
   let fresh = 0;
   for (const c of [...res.data].reverse()) if (ingestComment(c, liveId, 'POLL')) fresh++;
   return { count: res.data.length, fresh, sample: res.data.slice(0, 5) };

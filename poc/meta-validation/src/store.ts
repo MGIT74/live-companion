@@ -65,7 +65,13 @@ export interface Conversation {
 }
 
 export type SaleKind = 'live' | 'photo' | 'video' | 'post';
-export interface Followed { id: string; kind: SaleKind; title: string; picture?: string; permalink?: string; createdTime?: string; followedAt: string }
+export interface Followed {
+  id: string; kind: SaleKind; title: string; picture?: string; permalink?: string; createdTime?: string; followedAt: string;
+  /** Vidéo associée au live (les commentaires de la rediffusion y arrivent aussi). */
+  videoId?: string;
+  /** Live : fin détectée sur Facebook. Publication : moment où une autre vente a pris sa place. */
+  endedAt?: string;
+}
 
 export type TestStatus = 'A_TESTER' | 'OK' | 'KO' | 'PARTIEL';
 export interface TestResult { status: TestStatus; note: string; evidence: string[]; at?: string }

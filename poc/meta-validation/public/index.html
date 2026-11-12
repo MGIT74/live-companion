@@ -91,10 +91,10 @@
   .seg button[aria-pressed="true"] { background:var(--seg-on); color:var(--seg-on-ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
 
   .pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; background:var(--fill); color:var(--ink2); vertical-align:middle; }
-  .OK,.RESERVED,.CONFIRMED,.SENT,.DONE { background:var(--green-bg); color:var(--green); }
+  .OK,.CONFIRMED,.SENT,.DONE { background:var(--green-bg); color:var(--green); }
   .KO,.REJECTED,.CANCELLED,.FAILED { background:var(--red-bg); color:var(--red); }
   .PARTIEL,.NEEDS_REVIEW,.WAITLISTED { background:var(--orange-bg); color:var(--orange); }
-  .AWAIT_CONFIRM,.ASK_NAME,.ASK_PHONE,.ASK_ADDRESS,.ASK_CITY,.ASK_PAYMENT { background:var(--blue-bg); color:var(--blue); }
+  .RESERVED,.AWAIT_CONFIRM,.ASK_NAME,.ASK_PHONE,.ASK_ADDRESS,.ASK_CITY,.ASK_PAYMENT { background:var(--blue-bg); color:var(--blue); }
   .live-on { background:var(--live); color:#fff; font-weight:700; letter-spacing:.03em; }
   .live-on::before { content:""; width:7px; height:7px; border-radius:50%; background:#fff; margin-right:6px; animation:blink 1.4s infinite; }
   @keyframes blink { 50% { opacity:.3; } }
@@ -365,6 +365,7 @@
         </div>
         <div id="lives" class="muted"></div>
         <div id="posts" class="muted"></div>
+        <p class="muted" style="margin:10px 0 0">Automatique : la fin du live est détectée, le live suivant est suivi dès qu’il démarre, et les commentaires des rediffusions et publications restent lus 7 jours (tant qu’il reste du stock).</p>
         <details style="margin-top:10px">
           <summary>Réglages de lecture des commentaires</summary>
           <div class="row">
@@ -414,7 +415,7 @@
           </div>
           <div class="card">
             <div class="card-head">
-              <h2>Commentaires du live <span class="muted" id="ccount"></span></h2>
+              <h2>Commentaires <span class="muted" id="ccount"></span></h2>
               <label class="check"><input type="checkbox" id="onlyOrders" onchange="render()"> Commandes uniquement</label>
             </div>
             <div id="comments" class="list"></div>
@@ -745,8 +746,9 @@ function render() {
   const fol = S.activeLive && S.followed?.[S.activeLive.id];
   const isPost = S.activeLive && (fol ? fol.kind !== 'live' : /^Publication/.test(S.activeLive.title || ''));
   if (S.activeLive && /^Publication\s*:\s*$/.test(S.activeLive.title || '')) S.activeLive.title = 'Publication sans texte';
-  q('#live').textContent = S.activeLive ? (isPost ? `${fol ? (KIND[fol.kind] || KIND.post)[1] : 'Publication'} suivi · ${S.activeLive.title}` : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucune vente suivie';
-  q('#live').className = 'pill' + (S.activeLive ? (isPost ? ' AWAIT_CONFIRM' : ' live-on') : '');
+  const ended = fol?.endedAt;
+  q('#live').textContent = S.activeLive && ended && !isPost ? `Live terminé · rediffusion lue · ${S.activeLive.title}` : S.activeLive ? (isPost ? `${fol ? (KIND[fol.kind] || KIND.post)[1] : 'Publication'} suivi · ${S.activeLive.title}` : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucune vente suivie';
+  q('#live').className = 'pill' + (S.activeLive ? (isPost || ended ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
 
   // Messenger (abonnement de la Page aux webhooks)
@@ -813,7 +815,8 @@ function render() {
   q('#ccount').textContent = `· ${S.comments.length}`;
   q('#comments').innerHTML = comments.map((c) => {
     const i = intentById[c.intentId];
-    return `<div class="item"><div class="head"><span><b>${esc(c.fromName || 'Anonyme')}</b> <span class="muted">${ago(c.receivedAt)}</span><br>${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}</span>
+    const other = S.activeLive && c.liveVideoId !== S.activeLive.id ? S.followed?.[c.liveVideoId] : null;
+    return `<div class="item"><div class="head"><span><b>${esc(c.fromName || 'Anonyme')}</b> <span class="muted">${ago(c.receivedAt)}${other ? ` · ${other.kind === 'live' ? 'rediffusion' : 'publication'} « ${esc(other.title)} »` : ''}</span><br>${esc(c.message)}${c.parsedText ? ` <span class="muted">→ lu « ${esc(c.parsedText)} »</span>` : ''}</span>
       ${i ? `<span class="pill ${i.status}">${fr(i.status)}</span>` : ''}</div>
       <div class="muted">${c.sources.map(fr).join(' + ')}${c.parentId ? ' · réponse à un commentaire' : ''}${c.latencyMs != null ? ' · ' + Math.round(c.latencyMs / 1000) + ' s' : ''}</div></div>`;
   }).join('') || '<div class="empty">Les commentaires du live apparaîtront ici.</div>';
@@ -1098,7 +1101,7 @@ const vthumb = (l, lg) => `<span class="vthumb${lg ? ' lg' : ''}" style="${l.pic
 function livesTable(list, emptyText) {
   if (!list.length) return `<div class="empty">${emptyText}</div>`;
   return `<table><thead><tr><th>Vente</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th class="hide-sm">Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
-    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><div class="row" style="margin:0;flex-wrap:nowrap">${vthumb(l)}<span>${kindPill(l.kind)}${l.active ? ' <span class="pill live-on">EN COURS</span>' : l.current ? ' <span class="pill">Non archivée</span>' : ''}<br><b style="color:var(--ink)">${esc(l.name)}</b><br><span class="muted">${livePeriod(l)}</span></span></div></td>
+    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><div class="row" style="margin:0;flex-wrap:nowrap">${vthumb(l)}<span>${kindPill(l.kind)}${l.active && !l.replayUntil ? ' <span class="pill live-on">EN COURS</span>' : ''}${l.replayUntil ? ` <span class="pill AWAIT_CONFIRM" title="Les commentaires continuent d’être lus jusqu’au ${dt(l.replayUntil)}">${l.kind === 'live' ? 'Terminé · rediffusion lue' : 'Commentaires encore lus'}</span>` : ''}${l.current && !l.active && !l.replayUntil ? ' <span class="pill">Non archivée</span>' : ''}<br><b style="color:var(--ink)">${esc(l.name)}</b><br><span class="muted">${livePeriod(l)}</span></span></div></td>
       <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td class="hide-sm">${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
 }
 async function loadStats() {
@@ -1154,7 +1157,7 @@ async function openLive(id) {
   const row = (left, right) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)">${left}${right}</div>`;
   el.hidden = false;
   el.innerHTML = `<div class="card-head" style="align-items:flex-start">
-      <div class="row" style="margin:0;gap:16px;flex-wrap:nowrap">${vthumb(l, true)}<div>${kindPill(l.kind)}${l.active ? ' <span class="pill live-on">EN COURS</span>' : ''}<h2 style="font-size:22px;margin-top:6px">${esc(l.name)}</h2><span class="muted">${livePeriod(l)}</span></div></div>
+      <div class="row" style="margin:0;gap:16px;flex-wrap:nowrap">${vthumb(l, true)}<div>${kindPill(l.kind)}${l.active && !l.replayUntil ? ' <span class="pill live-on">EN COURS</span>' : ''}${l.replayUntil ? ` <span class="pill AWAIT_CONFIRM">Commentaires lus jusqu’au ${dt(l.replayUntil, false)}</span>` : ''}<h2 style="font-size:22px;margin-top:6px">${esc(l.name)}</h2><span class="muted">${livePeriod(l)}</span></div></div>
       <div class="row" style="margin:0">${l.permalink ? `<a class="btn sm" href="${esc(l.permalink)}" target="_blank" rel="noopener">Voir sur Facebook</a>` : ''}${l.active ? `<button class="sm primary" onclick="show('regie')">Ouvrir la régie</button>` : ''}${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.sessionId)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
     <div class="kpis" style="margin-bottom:18px">
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : 'commandes confirmées'}</span></div>

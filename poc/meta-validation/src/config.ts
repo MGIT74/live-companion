@@ -41,5 +41,6 @@ export const SCOPES = [
   'pages_messaging',
 ];
 
-export const graphBase = () => `https://graph.facebook.com/${config.graphVersion}`;
+/** META_GRAPH_BASE : uniquement pour les tests (faux Facebook local). */
+export const graphBase = () => `${process.env.META_GRAPH_BASE || 'https://graph.facebook.com'}/${config.graphVersion}`;
 export const streamingBase = 'https://streaming-graph.facebook.com';

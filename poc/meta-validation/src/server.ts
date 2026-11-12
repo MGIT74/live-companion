@@ -15,6 +15,7 @@ import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { allShopIds, archiveSession, currentShopId, flushAll, listSessions, loadShops, persist, recordTest, resetLiveData, runInShop, sessionSnapshot, shopForPage, state, TESTS, type TestStatus } from './store.ts';
 import { changePassword, clearSession, login, requireAccount, signup, updateProfile, usersCount } from './accounts.ts';
 import { migrate } from './db.ts';
+import { REPLAY_DAYS, startWatcher } from './watcher.ts';
 import { customerDetail, listCustomers, liveDetail, livesHistory, periodStats } from './stats.ts';
 
 const app = express();
@@ -149,6 +150,7 @@ app.get('/api/state', wrap(() => ({
   settings: state.settings,
   subscription: state.subscription,
   followed: state.followed,
+  replayDays: REPLAY_DAYS,
   ingestion: { ...ingestionStatus(), stats: ingestionStats() },
   webhookUrl: `${config.baseUrl}/webhooks/meta`,
   redirectUri: redirectUri(),
@@ -207,8 +209,12 @@ function followObject(o: { id: string; videoId?: string; title?: string; kind?: 
   state.followed ??= {};
   // Garde le titre de la vente précédente (anciennes données sans fiche).
   const before = state.activeLive;
-  if (before && before.id !== o.id && !state.followed[before.id]) {
-    state.followed[before.id] = { id: before.id, kind: /^Publication/.test(before.title ?? '') ? 'post' : 'live', title: before.title || 'Vente sans titre', followedAt: new Date().toISOString() };
+  if (before && before.id !== o.id) {
+    // La vente précédente n'est plus « en cours » : ses commentaires restent lus 7 jours (rediffusion).
+    const pf = state.followed[before.id] ?? { id: before.id, kind: /^Publication/.test(before.title ?? '') ? 'post' : 'live', title: before.title || 'Vente sans titre', followedAt: new Date().toISOString() };
+    pf.endedAt ??= new Date().toISOString();
+    pf.videoId ??= before.videoId;
+    state.followed[before.id] = pf;
   }
   state.activeLive = { id: o.id, videoId: o.videoId, title: o.title };
   const kinds = ['live', 'photo', 'video', 'post'];
@@ -221,6 +227,8 @@ function followObject(o: { id: string; videoId?: string; title?: string; kind?: 
     permalink: typeof o.permalink === 'string' ? o.permalink.slice(0, 500) : prev?.permalink,
     createdTime: o.createdTime ?? prev?.createdTime,
     followedAt: prev?.followedAt ?? new Date().toISOString(),
+    videoId: o.videoId ?? prev?.videoId,
+    endedAt: undefined, // re-suivie : redevient la vente en cours
   };
   persist();
   return state.activeLive;
@@ -454,6 +462,7 @@ for (const id of allShopIds()) {
   // Vérification Messenger au démarrage, boutique par boutique.
   runInShop(id, () => { if (state.selectedPageId && state.pages.length) void ensureSubscription(); });
 }
+startWatcher(); // fin des lives, nouveaux lives, rediffusions
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.on(sig, () => { flushAll().finally(() => process.exit(0)); });
 
 app.listen(config.port, () => {

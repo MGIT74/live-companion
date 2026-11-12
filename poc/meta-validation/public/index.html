@@ -235,6 +235,13 @@
   .search-box input { border:0; background:transparent; min-height:40px; padding:0; flex:1; min-width:0; box-shadow:none !important; }
   .cl-head { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
   .avatar.lg { width:64px; height:64px; font-size:22px; }
+  .vthumb { width:56px; height:56px; flex:none; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); }
+  .vthumb.lg { width:96px; height:96px; border-radius:16px; }
+  .kind { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; background:var(--fill); color:var(--ink2); }
+  .kind.k-live { background:var(--red-bg); color:var(--red); } .kind.k-photo { background:var(--blue-bg); color:var(--blue); } .kind.k-video { background:var(--orange-bg); color:var(--orange); }
+  .vprods { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  .vprod { display:flex; gap:10px; padding:10px; border-radius:12px; background:var(--fill); }
+  .vprod .ph { width:64px; height:64px; flex:none; border-radius:10px; background:var(--card) center/cover no-repeat; border:1px solid var(--sep); }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -270,7 +277,7 @@
     <div class="brand"><span class="mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg></span>Live Companion</div>
     <label class="page-box"><span class="muted">Page Facebook</span><select id="pageSel" aria-label="Page Facebook"></select></label>
     <button class="nav" data-view="stats"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
-    <button class="nav" data-view="lives"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lives passés</button>
+    <button class="nav" data-view="lives"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Ventes en ligne</button>
     <button class="nav" data-view="regie"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie live</button>
     <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Commandes<span class="count" id="navReview"></span></button>
     <button class="nav" data-view="clients"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg>Clients</button>
@@ -334,12 +341,15 @@
         <div class="card"><h2 style="margin-bottom:6px">Produits les plus vendus</h2><div id="stProducts"></div></div>
         <div class="card"><h2 style="margin-bottom:6px">Meilleurs clients</h2><div id="stCustomers"></div></div>
       </div>
-      <div class="card"><div class="card-head"><h2>Lives de la période</h2><button class="sm" onclick="show('lives')">Tous les lives</button></div><div id="stLives" class="table-wrap"></div></div>
+      <div class="card"><div class="card-head"><h2>Ventes de la période</h2><button class="sm" onclick="show('lives')">Toutes les ventes</button></div><div id="stLives" class="table-wrap"></div></div>
     </section>
 
-    <!-- ================= Lives passés ================= -->
-    <section class="view" id="v-lives" aria-label="Lives passés">
-      <div class="top"><div><h1>Lives passés</h1><div class="muted" style="font-size:15px;margin-top:4px">Chaque live terminé est gardé ici avec ses ventes.</div></div><button class="primary" onclick="newSession()">Terminer et archiver le live actuel</button></div>
+    <!-- ================= Ventes en ligne ================= -->
+    <section class="view" id="v-lives" aria-label="Ventes en ligne">
+      <div class="top"><div><h1>Ventes en ligne</h1><div class="muted" style="font-size:15px;margin-top:4px">Vos lives et publications Facebook, avec leurs produits, commentaires et commandes.</div></div><button class="primary" onclick="newSession()">Terminer et archiver la vente en cours</button></div>
+      <div class="seg" role="group" aria-label="Type de vente" id="vtSeg" style="align-self:flex-start;max-width:100%;overflow-x:auto">
+        <button type="button" data-k="all" aria-pressed="true">Toutes</button><button type="button" data-k="live" aria-pressed="false">Lives</button><button type="button" data-k="photo" aria-pressed="false">Posts photo</button><button type="button" data-k="video" aria-pressed="false">Posts vidéo</button>
+      </div>
       <div class="card"><div id="livesList" class="table-wrap"><div class="empty">Chargement…</div></div></div>
       <div class="card" id="liveDetail" hidden></div>
     </section>
@@ -497,7 +507,7 @@
       </div>
       <div class="card">
         <h2 style="margin-bottom:10px">Autres écrans</h2>
-        <div class="row" style="margin:0"><button onclick="show('lives')">Lives passés</button><button onclick="show('clients')">Clients</button><button onclick="show('messenger')">Messenger</button><button onclick="show('stats')">Statistiques</button></div>
+        <div class="row" style="margin:0"><button onclick="show('lives')">Ventes en ligne</button><button onclick="show('clients')">Clients</button><button onclick="show('messenger')">Messenger</button><button onclick="show('stats')">Statistiques</button></div>
       </div>
       <div class="card">
         <div class="card-head" style="margin:0"><div><h2>Outils techniques</h2><span class="muted">Tests de l’API Meta et journal.</span></div><button onclick="show('reglages')">Ouvrir</button></div>
@@ -648,21 +658,29 @@ async function get(path) { const r = await fetch(path); if (r.status === 401) { 
 
 async function detectLive() {
   const r = await get('/api/lives');
-  q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><span class="pill live-on">EN DIRECT</span><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button class="primary sm" onclick='api("/api/lives/select",${JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title })})'>Suivre ce live</button></div>`).join('') : '<div class="row">Aucun live en cours sur la Page.</div>';
+  q('#lives').innerHTML = r.data.length ? r.data.map((l) => `<div class="row"><span class="pill live-on">EN DIRECT</span><b>${esc(l.title || 'Sans titre')}</b> <code>${l.id}</code> <button class="primary sm" onclick='api("/api/lives/select",${esc(JSON.stringify({ id: l.id, videoId: l.video?.id, title: l.title || 'Live du ' + new Date().toLocaleDateString('fr-FR'), kind: 'live', permalink: l.permalink_url ? 'https://www.facebook.com' + l.permalink_url : undefined, createdTime: l.creation_time }))})'>Suivre ce live</button></div>`).join('') : '<div class="row">Aucun live en cours sur la Page.</div>';
   refresh();
 }
 
 async function newSession() {
-  const name = prompt('Nom du live à archiver (ex. Live du 11 nov.). Les commandes confirmées seront retirées du stock.', S?.activeLive?.title || '');
+  const name = prompt('Nom à donner à cette vente archivée (ex. Live du 11 nov.). Les commandes confirmées seront retirées du stock.', S?.activeLive?.title || '');
   if (name === null) return;
   const s = await api('/api/sessions/new', { name });
-  toast(`Live « ${s.name} » archivé. Nouveau live prêt.`);
+  toast(`« ${s.name} » archivée. Prêt pour la prochaine vente.`);
   loadLives();
 }
 
+function postKind(p) {
+  const mt = String(p.attachments?.data?.[0]?.media_type || '').toLowerCase();
+  return mt === 'video' ? 'video' : mt === 'photo' || mt === 'album' ? 'photo' : 'post';
+}
+function postFollow(p) {
+  return { id: p.id, kind: postKind(p), picture: p.full_picture, permalink: p.permalink_url, createdTime: p.created_time,
+    title: (p.message || '').trim().slice(0, 60) || `${(KIND[postKind(p)] || KIND.post)[1]} du ${new Date(p.created_time).toLocaleDateString('fr-FR')}` };
+}
 async function listPosts() {
   const r = await get('/api/posts');
-  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span style="color:var(--ink)">${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString('fr-FR')}</span> <button class="sm" onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + ((p.message || '').trim().slice(0, 30) || new Date(p.created_time).toLocaleDateString('fr-FR')) })})'>Suivre cette publication</button></div>`).join('') : '<div class="row">Aucune publication sur la Page : publiez-en une puis réessayez.</div>';
+  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row" style="flex-wrap:nowrap">${vthumb({ picture: p.full_picture, kind: postKind(p) })}<span style="flex:1;min-width:0">${kindPill(postKind(p))}<br><span style="color:var(--ink)">${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString('fr-FR')}</span></span> <button class="sm" onclick='api("/api/lives/select",${esc(JSON.stringify(postFollow(p)))})'>Suivre cette publication</button></div>`).join('') : '<div class="row">Aucune publication sur la Page : publiez-en une puis réessayez.</div>';
 }
 
 async function tryParse() {
@@ -724,9 +742,10 @@ function render() {
   q('#conn').className = 'pill ' + (S.connected ? 'OK' : 'KO');
   q('#fbBtn').style.display = S.connected ? 'none' : '';
   q('#pageSel').innerHTML = '<option value="">Choisir une Page…</option>' + S.pages.map((p) => `<option value="${p.id}" ${p.id === S.selectedPageId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  const isPost = S.activeLive && /^Publication/.test(S.activeLive.title || '');
+  const fol = S.activeLive && S.followed?.[S.activeLive.id];
+  const isPost = S.activeLive && (fol ? fol.kind !== 'live' : /^Publication/.test(S.activeLive.title || ''));
   if (S.activeLive && /^Publication\s*:\s*$/.test(S.activeLive.title || '')) S.activeLive.title = 'Publication sans texte';
-  q('#live').textContent = S.activeLive ? (isPost ? S.activeLive.title : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucun live suivi';
+  q('#live').textContent = S.activeLive ? (isPost ? `${fol ? (KIND[fol.kind] || KIND.post)[1] : 'Publication'} suivi · ${S.activeLive.title}` : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucune vente suivie';
   q('#live').className = 'pill' + (S.activeLive ? (isPost ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
 
@@ -1067,11 +1086,20 @@ function livePeriod(l) {
   const same = new Date(l.startedAt).toDateString() === new Date(l.endedAt).toDateString();
   return `${dt(l.startedAt)} → ${same ? new Date(l.endedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : dt(l.endedAt)}`;
 }
+const KIND = { live: ['k-live', 'Live'], photo: ['k-photo', 'Post photo'], video: ['k-video', 'Post vidéo'], post: ['k-post', 'Publication'] };
+const KIND_ICON = {
+  live: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>',
+  photo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
+  video: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></svg>',
+};
+KIND_ICON.post = KIND_ICON.photo;
+const kindPill = (k) => `<span class="kind ${(KIND[k] || KIND.post)[0]}">${(KIND[k] || KIND.post)[1]}</span>`;
+const vthumb = (l, lg) => `<span class="vthumb${lg ? ' lg' : ''}" style="${l.picture ? `background-image:url('${esc(l.picture)}')` : ''}">${l.picture ? '' : KIND_ICON[l.kind] || KIND_ICON.post}</span>`;
 function livesTable(list, emptyText) {
   if (!list.length) return `<div class="empty">${emptyText}</div>`;
-  return `<table><thead><tr><th>Live</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th>Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
-    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><b style="color:var(--ink)">${esc(l.name)}</b> ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}<br><span class="muted">${livePeriod(l)}</span></td>
-      <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td>${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
+  return `<table><thead><tr><th>Vente</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th class="hide-sm">Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
+    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><div class="row" style="margin:0;flex-wrap:nowrap">${vthumb(l)}<span>${kindPill(l.kind)}${l.active ? ' <span class="pill live-on">EN COURS</span>' : l.current ? ' <span class="pill">Non archivée</span>' : ''}<br><b style="color:var(--ink)">${esc(l.name)}</b><br><span class="muted">${livePeriod(l)}</span></span></div></td>
+      <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td class="hide-sm">${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
 }
 async function loadStats() {
   if (PR.key !== 'custom') { const [a, b] = presetRange(PR.key); PR.start = a; PR.end = b; } // « Aujourd'hui » reste aujourd'hui
@@ -1098,30 +1126,52 @@ async function loadStats() {
   q('#stLives').innerHTML = livesTable(d.lives, 'Aucun live sur la période.');
 }
 
-// ---------- Lives passés
+// ---------- Ventes en ligne
+var vtKind = 'all', vtList = [];
+document.querySelectorAll('#vtSeg button').forEach((b) => b.addEventListener('click', () => {
+  vtKind = b.dataset.k;
+  document.querySelectorAll('#vtSeg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderLives();
+}));
+function renderLives() {
+  const list = vtKind === 'all' ? vtList : vtList.filter((l) => l.kind === vtKind);
+  const names = { live: 'live', photo: 'post photo', video: 'post vidéo' };
+  q('#livesList').innerHTML = livesTable(list, vtKind === 'all'
+    ? 'Aucune vente pour l’instant. Suivez un live ou une publication dans la régie : la vente apparaîtra ici avec ses produits, commentaires et commandes.'
+    : `Aucun ${names[vtKind]} pour l’instant.`);
+}
 async function loadLives() {
-  const list = await get('/api/lives/history');
-  q('#livesList').innerHTML = livesTable(list, 'Aucun live pour l’instant. Quand un live est terminé, cliquez sur « Terminer et archiver le live actuel » : il apparaîtra ici avec ses ventes.');
+  vtList = await get('/api/lives/history');
+  const counts = { all: vtList.length, live: 0, photo: 0, video: 0 };
+  vtList.forEach((l) => { if (counts[l.kind] !== undefined) counts[l.kind]++; });
+  document.querySelectorAll('#vtSeg button').forEach((b) => { const base = { all: 'Toutes', live: 'Lives', photo: 'Posts photo', video: 'Posts vidéo' }[b.dataset.k]; b.textContent = counts[b.dataset.k] ? `${base} · ${counts[b.dataset.k]}` : base; });
+  renderLives();
 }
 async function openLive(id) {
-  if (q('#v-lives').classList.contains('on') === false) show('lives');
+  if (!q('#v-lives').classList.contains('on')) show('lives');
   const d = await get(`/api/lives/history/${encodeURIComponent(id)}`);
   const l = d.summary, el = q('#liveDetail');
+  const row = (left, right) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)">${left}${right}</div>`;
   el.hidden = false;
-  el.innerHTML = `<div class="card-head"><div><h2>${esc(l.name)} ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}</h2><span class="muted">${livePeriod(l)}</span></div>
-      <div class="row" style="margin:0">${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.id)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
-    <div class="kpis" style="margin-bottom:16px">
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : ''}</span></div>
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Confirmées</span><span class="v">${l.confirmed}</span><span class="h">sur ${l.reservations} commandes</span></div>
+  el.innerHTML = `<div class="card-head" style="align-items:flex-start">
+      <div class="row" style="margin:0;gap:16px;flex-wrap:nowrap">${vthumb(l, true)}<div>${kindPill(l.kind)}${l.active ? ' <span class="pill live-on">EN COURS</span>' : ''}<h2 style="font-size:22px;margin-top:6px">${esc(l.name)}</h2><span class="muted">${livePeriod(l)}</span></div></div>
+      <div class="row" style="margin:0">${l.permalink ? `<a class="btn sm" href="${esc(l.permalink)}" target="_blank" rel="noopener">Voir sur Facebook</a>` : ''}${l.active ? `<button class="sm primary" onclick="show('regie')">Ouvrir la régie</button>` : ''}${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.sessionId)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
+    <div class="kpis" style="margin-bottom:18px">
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : 'commandes confirmées'}</span></div>
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commandes</span><span class="v">${l.reservations}</span><span class="h">${l.confirmed} confirmée${l.confirmed > 1 ? 's' : ''}${l.toValidate ? ` · ${l.toValidate} à valider` : ''}</span></div>
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Articles vendus</span><span class="v">${l.itemsSold}</span><span class="h">${l.customers} client${l.customers > 1 ? 's' : ''}</span></div>
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commentaires</span><span class="v">${l.comments}</span><span class="h">${l.cancelled} annulée${l.cancelled > 1 ? 's' : ''}</span></div>
     </div>
-    <div class="grid cols-2">
-      <div><h2 style="margin-bottom:6px">Produits vendus</h2>${d.products.length ? d.products.map((p) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span><span class="muted">× ${p.quantity} · </span><b>${mga(p.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucune vente confirmée.</div>'}</div>
-      <div><h2 style="margin-bottom:6px">Clients</h2>${d.customers.length ? d.customers.map((c) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><b>${esc(c.name)}</b><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucun client confirmé.</div>'}</div>
+    <h2 style="margin-bottom:10px">Produits en vente</h2>
+    ${d.products.length ? `<div class="vprods">${d.products.map((p) => `<div class="vprod"><span class="ph" style="${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}"></span><div style="min-width:0;flex:1"><span class="code">${esc(p.code)}</span> ${p.published ? '<span class="pill OK">Publié</span>' : ''}<br><b>${esc(p.name)}</b><br><span class="muted">${mga(p.priceMga)} · ${p.sold} vendu${p.sold > 1 ? 's' : ''}${p.pending ? ` · ${p.pending} en attente` : ''}</span>${l.current ? `<div class="row" style="margin:6px 0 0;gap:4px">${chips(p.variants)}</div>` : ''}</div></div>`).join('')}</div>` : '<div class="empty">Aucun produit pour cette vente.</div>'}
+    <div class="grid cols-2" style="margin-top:18px">
+      <div><h2 style="margin-bottom:6px">Commentaires · ${d.comments.length}</h2><div class="list" style="max-height:420px">${d.comments.map((c) => `<div class="item"><div class="head"><span><b>${esc(c.from)}</b> <span class="muted">${dt(c.at)}</span><br>${esc(c.message)}</span>${c.status ? `<span class="pill ${c.status}">${fr(c.status)}</span>` : ''}</div></div>`).join('') || '<div class="empty">Aucun commentaire.</div>'}</div></div>
+      <div><h2 style="margin-bottom:6px">Commandes · ${d.sales.length}</h2><div class="list" style="max-height:420px">${d.sales.map((x) => `<div class="item"><div class="head"><span><b>${esc(x.customer)}</b> <span class="muted">${dt(x.at)}</span><br><span class="code">${esc(x.code)}</span> ${esc(x.name)} × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</span><span style="text-align:right"><b>${mga(x.amount)}</b><br><span class="pill ${x.status}">${fr(x.status)}</span></span></div></div>`).join('') || '<div class="empty">Aucune commande.</div>'}</div></div>
     </div>
-    <h2 style="margin:18px 0 6px">Toutes les commandes</h2>
-    <div class="table-wrap"><table><thead><tr><th>Heure</th><th>Client</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${d.sales.map((x) => `<tr><td>${new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.customer)}</td><td><span class="code">${esc(x.code)}</span> × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</td><td><span class="pill ${x.status}">${fr(x.status)}</span></td><td>${mga(x.amount)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Aucune commande.</td></tr>'}</tbody></table></div>`;
+    <div class="grid cols-2" style="margin-top:18px">
+      <div><h2 style="margin-bottom:6px">Clients</h2>${d.customers.map((c) => row(`<b>${esc(c.name)}</b>`, `<span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span>`)).join('') || '<div class="empty">Aucun client confirmé.</div>'}</div>
+      <div><h2 style="margin-bottom:6px">Messenger</h2>${d.conversations.map((c) => row(`<span><b>${esc(c.name)}</b><br><span class="muted">${esc([c.phone, c.city, fr(c.payment)].filter(Boolean).join(' · ') || 'coordonnées pas encore reçues')}</span></span>`, `<span class="pill ${c.step}">${fr(c.step)}</span>`)).join('') || '<div class="empty">Aucune conversation.</div>'}</div>
+    </div>`;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

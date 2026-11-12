@@ -1,5 +1,5 @@
 import { q } from './db.ts';
-import { currentShopId, state, type Conversation, type Intent, type LiveComment, type Product } from './store.ts';
+import { currentShopId, state, type Conversation, type Followed, type Intent, type LiveComment, type ProductComment, type Product, type SaleKind } from './store.ts';
 
 /**
  * Statistiques de la boutique : lives archivés (table live_sessions) + live en cours.
@@ -9,6 +9,8 @@ import { currentShopId, state, type Conversation, type Intent, type LiveComment,
 interface Snapshot {
   summary: { id: string; name: string; archivedAt: string };
   activeLive?: { id: string; title?: string };
+  followed?: Record<string, Followed>;
+  productComments?: ProductComment[];
   products: Product[];
   comments: Record<string, LiveComment>;
   intents: Intent[];
@@ -30,6 +32,7 @@ export interface Sale {
 
 export interface LiveSummary {
   id: string; name: string; current: boolean;
+  sessionId: string; objectId: string; kind: SaleKind; picture?: string; permalink?: string; active: boolean;
   startedAt?: string; endedAt?: string;
   comments: number; reservations: number; confirmed: number; cancelled: number; toValidate: number;
   revenueMga: number; pendingMga: number; customers: number; itemsSold: number;
@@ -48,7 +51,7 @@ async function archived(): Promise<Snapshot[]> {
     for (const r of rows) {
       const s = JSON.parse(r.snapshot);
       cache.set(`${shop}:${r.id}`, {
-        summary: s.summary, activeLive: s.activeLive, products: s.products ?? [],
+        summary: s.summary, activeLive: s.activeLive, followed: s.followed, productComments: s.productComments ?? [], products: s.products ?? [],
         comments: s.comments ?? {}, intents: s.intents ?? [], conversations: s.conversations ?? {},
       });
     }
@@ -59,7 +62,7 @@ async function archived(): Promise<Snapshot[]> {
 function currentSnapshot(): Snapshot {
   return {
     summary: { id: 'en-cours', name: state.activeLive?.title || 'Live en cours', archivedAt: '' },
-    activeLive: state.activeLive, products: state.products, comments: state.comments, intents: state.intents, conversations: state.conversations,
+    activeLive: state.activeLive, followed: state.followed, productComments: state.productComments, products: state.products, comments: state.comments, intents: state.intents, conversations: state.conversations,
   };
 }
 
@@ -68,10 +71,10 @@ function customerName(s: Snapshot, intent: Intent) {
   return (conv?.customer.name || intent.authorName || 'Client').trim();
 }
 
-function salesOf(s: Snapshot): Sale[] {
+function salesOf(s: Snapshot, objectId?: string): Sale[] {
   const price = new Map(s.products.map((p) => [p.code, p]));
   return s.intents
-    .filter((i) => i.code && ['RESERVED', 'CONFIRMED', 'CANCELLED'].includes(i.status))
+    .filter((i) => i.code && ['RESERVED', 'CONFIRMED', 'CANCELLED'].includes(i.status) && (!objectId || i.liveVideoId === objectId))
     .map((i) => {
       const p = price.get(i.code!);
       return {
@@ -82,12 +85,33 @@ function salesOf(s: Snapshot): Sale[] {
     });
 }
 
-function summarize(s: Snapshot, current: boolean): LiveSummary {
-  const sales = salesOf(s);
+/** Live ou publication suivi(e) dans une session : titre, type, image (avec repli pour les anciennes données). */
+function objectInfo(s: Snapshot, objectId: string): Followed {
+  const f = s.followed?.[objectId] ?? state.followed?.[objectId];
+  if (f) return f;
+  const title = s.activeLive?.id === objectId ? s.activeLive.title : undefined;
+  const fallback = s.summary.id === 'en-cours' ? 'Vente sans titre' : s.summary.name;
+  const t = title && !/^Publication\s*:\s*$/.test(title) ? title : title ? 'Publication sans texte' : fallback;
+  return { id: objectId, kind: /^Publication/.test(t ?? '') ? 'post' : 'live', title: t || 'Vente', followedAt: '' };
+}
+
+/** Lives / publications d'une session (une « vente en ligne » chacun). */
+function objectsOf(s: Snapshot, current: boolean): string[] {
+  const ids = new Set<string>();
+  for (const c of Object.values(s.comments)) if (c.liveVideoId) ids.add(c.liveVideoId);
+  for (const i of s.intents) if (i.liveVideoId) ids.add(i.liveVideoId);
+  if (current && s.activeLive?.id) ids.add(s.activeLive.id);
+  return [...ids];
+}
+
+function summarize(s: Snapshot, current: boolean, objectId: string): LiveSummary {
+  const sales = salesOf(s, objectId);
   const confirmed = sales.filter((x) => x.status === 'CONFIRMED');
   const reserved = sales.filter((x) => x.status === 'RESERVED');
   const cancelled = sales.filter((x) => x.status === 'CANCELLED').length;
-  const times = [...Object.values(s.comments).map((c) => c.createdTime ?? c.receivedAt), ...s.intents.map((i) => i.createdAt)].filter(Boolean).sort();
+  const comments = Object.values(s.comments).filter((c) => c.liveVideoId === objectId);
+  const intents = s.intents.filter((i) => i.liveVideoId === objectId);
+  const times = [...comments.map((c) => c.createdTime ?? c.receivedAt), ...intents.map((i) => i.createdAt)].filter(Boolean).sort();
   const byProduct = new Map<string, { code: string; name: string; quantity: number }>();
   for (const x of confirmed) {
     const cur = byProduct.get(x.code) ?? { code: x.code, name: x.name, quantity: 0 };
@@ -95,14 +119,18 @@ function summarize(s: Snapshot, current: boolean): LiveSummary {
     byProduct.set(x.code, cur);
   }
   const decided = confirmed.length + cancelled;
+  const info = objectInfo(s, objectId);
   return {
-    id: s.summary.id, name: s.summary.name, current,
-    startedAt: times[0], endedAt: current ? undefined : s.summary.archivedAt || times.at(-1),
-    comments: Object.keys(s.comments).length,
+    id: `${s.summary.id}~${objectId}`, name: info.title, current,
+    sessionId: s.summary.id, objectId, kind: info.kind, picture: info.picture, permalink: info.permalink,
+    active: current && state.activeLive?.id === objectId,
+    startedAt: times[0] ?? info.createdTime ?? (info.followedAt || undefined),
+    endedAt: current ? undefined : s.summary.archivedAt || times.at(-1),
+    comments: comments.length,
     reservations: sales.length,
     confirmed: confirmed.length,
     cancelled,
-    toValidate: s.intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).length,
+    toValidate: intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).length,
     revenueMga: confirmed.reduce((a, x) => a + x.amount, 0),
     pendingMga: reserved.reduce((a, x) => a + x.amount, 0),
     customers: new Set(confirmed.map((x) => x.customer.toLowerCase())).size,
@@ -112,33 +140,64 @@ function summarize(s: Snapshot, current: boolean): LiveSummary {
   };
 }
 
-/** Liste des lives : celui en cours (s'il a de l'activité) puis les archivés, du plus récent au plus ancien. */
+/** Ventes en ligne : celles de la session en cours, puis les archivées, de la plus récente à la plus ancienne. */
 export async function livesHistory(): Promise<LiveSummary[]> {
   const cur = currentSnapshot();
-  const list = (await archived()).map((s) => summarize(s, false));
-  const hasActivity = Object.keys(cur.comments).length || cur.intents.length;
-  return hasActivity ? [summarize(cur, true), ...list] : list;
+  const curList = objectsOf(cur, true).map((o) => summarize(cur, true, o));
+  const old = (await archived()).flatMap((s) => {
+    const objs = objectsOf(s, false);
+    return objs.length ? objs.map((o) => summarize(s, false, o)) : [summarize(s, false, s.activeLive?.id ?? s.summary.id)];
+  });
+  const byStart = (a: LiveSummary, b: LiveSummary) => (b.startedAt ?? b.endedAt ?? '').localeCompare(a.startedAt ?? a.endedAt ?? '');
+  return [...curList.sort((a, b) => Number(b.active) - Number(a.active) || byStart(a, b)), ...old.sort(byStart)];
 }
 
-/** Détail d'un live : chiffres, produits vendus, clients, réservations. */
+/** Détail d'une vente en ligne : tout ce que montrait la régie (produits, commentaires, commandes, clients). */
 export async function liveDetail(id: string) {
-  const s = id === 'en-cours' ? currentSnapshot() : (await archived()).find((x) => x.summary.id === id);
-  if (!s) throw new Error('Live introuvable');
-  const sales = salesOf(s);
+  const [sessionId, objectId] = id.split('~');
+  const s = sessionId === 'en-cours' ? currentSnapshot() : (await archived()).find((x) => x.summary.id === sessionId);
+  if (!s || !objectId) throw new Error('Vente introuvable');
+  const current = sessionId === 'en-cours';
+  const sales = salesOf(s, objectId);
   const confirmed = sales.filter((x) => x.status === 'CONFIRMED');
-  const products = new Map<string, { code: string; name: string; quantity: number; revenueMga: number }>();
+  const sold = new Map<string, { quantity: number; revenueMga: number; pending: number }>();
   const customers = new Map<string, { name: string; orders: number; quantity: number; revenueMga: number }>();
+  for (const x of sales) {
+    const p = sold.get(x.code) ?? { quantity: 0, revenueMga: 0, pending: 0 };
+    if (x.status === 'CONFIRMED') { p.quantity += x.quantity; p.revenueMga += x.amount; } else if (x.status === 'RESERVED') p.pending += x.quantity;
+    sold.set(x.code, p);
+  }
   for (const x of confirmed) {
-    const p = products.get(x.code) ?? { code: x.code, name: x.name, quantity: 0, revenueMga: 0 };
-    p.quantity += x.quantity; p.revenueMga += x.amount; products.set(x.code, p);
     const k = x.customer.toLowerCase();
     const c = customers.get(k) ?? { name: x.customer, orders: 0, quantity: 0, revenueMga: 0 };
     c.orders++; c.quantity += x.quantity; c.revenueMga += x.amount; customers.set(k, c);
   }
+  const intents = s.intents.filter((i) => i.liveVideoId === objectId);
+  const intentIds = new Set(intents.map((i) => i.id));
+  const intentById = new Map(intents.map((i) => [i.id, i]));
+  const published = new Set((s.productComments ?? []).filter((p) => p.liveVideoId === objectId).map((p) => p.code));
+  // Produits mis en vente : ceux publiés dans cette vente ou commandés ; sinon tout le catalogue de la session.
+  const involved = new Set([...published, ...sales.map((x) => x.code)]);
+  const products = s.products
+    .filter((p) => !involved.size || involved.has(p.code))
+    .map((p) => ({
+      code: p.code, name: p.name, priceMga: p.priceMga, photo: p.photo, published: published.has(p.code),
+      variants: p.variants.map((v) => ({ label: v.label, stock: v.stock, available: v.stock - v.reserved })),
+      sold: sold.get(p.code)?.quantity ?? 0, revenueMga: sold.get(p.code)?.revenueMga ?? 0, pending: sold.get(p.code)?.pending ?? 0,
+    }));
+  const comments = Object.values(s.comments)
+    .filter((c) => c.liveVideoId === objectId)
+    .sort((a, b) => (b.createdTime ?? b.receivedAt).localeCompare(a.createdTime ?? a.receivedAt))
+    .map((c) => ({ id: c.id, from: c.fromName ?? 'Anonyme', message: c.message, at: c.createdTime ?? c.receivedAt, status: c.intentId ? intentById.get(c.intentId)?.status : undefined }));
+  const conversations = Object.values(s.conversations)
+    .filter((c) => c.intentIds.some((i) => intentIds.has(i)))
+    .map((c) => ({ name: c.customer.name ?? 'Client', phone: c.customer.phone, city: c.customer.city, payment: c.customer.payment, step: c.step }));
   return {
-    summary: summarize(s, id === 'en-cours'),
-    products: [...products.values()].sort((a, b) => b.revenueMga - a.revenueMga),
+    summary: summarize(s, current, objectId),
+    products: products.sort((a, b) => b.revenueMga - a.revenueMga || Number(b.published) - Number(a.published)),
     customers: [...customers.values()].sort((a, b) => b.revenueMga - a.revenueMga),
+    comments,
+    conversations,
     sales: sales.sort((a, b) => a.at.localeCompare(b.at)),
   };
 }
@@ -149,7 +208,7 @@ export async function liveDetail(id: string) {
  */
 export async function periodStats(from: Date, to: Date, tzOffsetMin: number) {
   const snaps = [currentSnapshot(), ...(await archived())];
-  const all = snaps.flatMap(salesOf);
+  const all = snaps.flatMap((x) => salesOf(x));
   // Une vente compte à la date de sa confirmation (à défaut, de la réservation).
   const when = (x: Sale) => new Date(x.confirmedAt ?? x.at);
   const inRange = all.filter((x) => { const t = when(x).getTime(); return t >= from.getTime() && t < to.getTime(); });
@@ -267,7 +326,7 @@ async function customerIndex() {
       if (!c.firstOrderAt || i.createdAt < c.firstOrderAt) c.firstOrderAt = i.createdAt;
       if (!c.lastOrderAt || i.createdAt > c.lastOrderAt) c.lastOrderAt = i.createdAt;
       c.liveIds.add(s.summary.id);
-      c.history.push({ at: i.createdAt, live: s.summary.name, current, code: i.code, name: p?.name ?? i.code, variant: i.variant, quantity: i.quantity, status: i.status, amount });
+      c.history.push({ at: i.createdAt, live: objectInfo(s, i.liveVideoId).title, current, code: i.code, name: p?.name ?? i.code, variant: i.variant, quantity: i.quantity, status: i.status, amount });
     }
   }
   for (const c of map.values()) c.lives = c.liveIds.size;

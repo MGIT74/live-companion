@@ -64,6 +64,9 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export type SaleKind = 'live' | 'photo' | 'video' | 'post';
+export interface Followed { id: string; kind: SaleKind; title: string; picture?: string; permalink?: string; createdTime?: string; followedAt: string }
+
 export type TestStatus = 'A_TESTER' | 'OK' | 'KO' | 'PARTIEL';
 export interface TestResult { status: TestStatus; note: string; evidence: string[]; at?: string }
 
@@ -73,6 +76,8 @@ export interface State {
   pages: PageRecord[];
   selectedPageId?: string;
   activeLive?: { id: string; videoId?: string; title?: string };
+  /** Tout ce qui a été suivi (live, post photo, post vidéo) : type, titre, image, lien Facebook. */
+  followed?: Record<string, Followed>;
   products: Product[];
   comments: Record<string, LiveComment>;
   intents: Intent[];
@@ -221,6 +226,7 @@ export async function archiveSession(name: string): Promise<SessionSummary> {
     summary,
     pageId: state.selectedPageId,
     activeLive: state.activeLive,
+    followed: state.followed,
     products: state.products,
     comments: state.comments,
     intents: state.intents,

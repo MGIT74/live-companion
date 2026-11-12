@@ -148,6 +148,7 @@ app.get('/api/state', wrap(() => ({
   tests: Object.entries(TESTS).map(([id, label]) => ({ id, label, ...state.tests[id] })),
   settings: state.settings,
   subscription: state.subscription,
+  followed: state.followed,
   ingestion: { ...ingestionStatus(), stats: ingestionStats() },
   webhookUrl: `${config.baseUrl}/webhooks/meta`,
   redirectUri: redirectUri(),
@@ -186,8 +187,8 @@ app.get('/api/lives', wrap(async () => {
     note: res.data.length ? `${res.data.length} live(s) actif(s) détecté(s).` : 'Aucun live actif au moment de l’appel.',
   });
   if (res.data.length === 1 && !state.activeLive) {
-    state.activeLive = { id: res.data[0].id, videoId: res.data[0].video?.id, title: res.data[0].title };
-    persist();
+    const l = res.data[0];
+    followObject({ id: l.id, videoId: l.video?.id, title: l.title || 'Live', kind: 'live', permalink: l.permalink_url ? `https://www.facebook.com${l.permalink_url}` : undefined, createdTime: l.creation_time });
   }
   return res;
 }));
@@ -196,17 +197,35 @@ app.get('/api/lives', wrap(async () => {
 app.get('/api/posts', wrap(async () => {
   const page = selectedPage();
   return graph<{ data: any[] }>('GET', `${page.id}/posts`, page.token, {
-    fields: 'id,message,created_time,permalink_url', limit: 5,
+    fields: 'id,message,created_time,permalink_url,full_picture,attachments{media_type,type}', limit: 10,
   });
 }));
 
-app.post('/api/lives/select', wrap((req) => {
-  const { id, videoId, title } = req.body;
-  if (!id) throw new Error('id requis');
-  state.activeLive = { id, videoId, title };
+/** Suit un live ou une publication : devient la « vente en ligne » en cours. */
+function followObject(o: { id: string; videoId?: string; title?: string; kind?: string; picture?: unknown; permalink?: unknown; createdTime?: string }) {
+  if (!o.id) throw new Error('id requis');
+  state.followed ??= {};
+  // Garde le titre de la vente précédente (anciennes données sans fiche).
+  const before = state.activeLive;
+  if (before && before.id !== o.id && !state.followed[before.id]) {
+    state.followed[before.id] = { id: before.id, kind: /^Publication/.test(before.title ?? '') ? 'post' : 'live', title: before.title || 'Vente sans titre', followedAt: new Date().toISOString() };
+  }
+  state.activeLive = { id: o.id, videoId: o.videoId, title: o.title };
+  const kinds = ['live', 'photo', 'video', 'post'];
+  const prev = state.followed[o.id];
+  state.followed[o.id] = {
+    id: o.id,
+    kind: (kinds.includes(String(o.kind)) ? o.kind : prev?.kind ?? (/^Publication/.test(o.title ?? '') ? 'post' : 'live')) as any,
+    title: String(o.title ?? prev?.title ?? 'Vente').slice(0, 160),
+    picture: typeof o.picture === 'string' ? o.picture.slice(0, 1000) : prev?.picture,
+    permalink: typeof o.permalink === 'string' ? o.permalink.slice(0, 500) : prev?.permalink,
+    createdTime: o.createdTime ?? prev?.createdTime,
+    followedAt: prev?.followedAt ?? new Date().toISOString(),
+  };
   persist();
   return state.activeLive;
-}));
+}
+app.post('/api/lives/select', wrap((req) => followObject(req.body)));
 
 // T4 / T5 — ingestion
 const targetId = (which?: string) => {
@@ -226,7 +245,29 @@ app.get('/api/stats', wrap((req) => {
   if (to.getTime() - from.getTime() > 4000 * 86_400_000) throw new Error('Période trop longue');
   return periodStats(from, to, Number(req.query.tz ?? 0) || 0);
 }));
-app.get('/api/lives/history', wrap(() => livesHistory()));
+/** Anciennes données : retrouve auprès de Facebook le type (photo, vidéo) et l'image de la publication suivie. */
+async function enrichFollowed() {
+  const a = state.activeLive;
+  if (!a || !state.selectedPageId) return;
+  const f = state.followed?.[a.id];
+  if (f && (f.kind !== 'post' || f.picture)) return;
+  try {
+    const page = selectedPage();
+    const r = await graph<any>('GET', a.id, page.token, { fields: 'full_picture,permalink_url,created_time,attachments{media_type}' });
+    const mt = String(r.attachments?.data?.[0]?.media_type ?? '').toLowerCase();
+    state.followed ??= {};
+    state.followed[a.id] = {
+      id: a.id, kind: mt === 'video' ? 'video' : mt === 'photo' || mt === 'album' ? 'photo' : 'post',
+      title: a.title && !/^Publication\s*:\s*$/.test(a.title) ? a.title : 'Publication sans texte',
+      picture: r.full_picture, permalink: r.permalink_url, createdTime: r.created_time, followedAt: f?.followedAt ?? new Date().toISOString(),
+    };
+    persist();
+  } catch {
+    // Pas une publication (ex. un live) : on garde « live ».
+    if (!f && !/^Publication/.test(a.title ?? '')) { state.followed ??= {}; state.followed[a.id] = { id: a.id, kind: 'live', title: a.title ?? 'Live', followedAt: new Date().toISOString() }; persist(); }
+  }
+}
+app.get('/api/lives/history', wrap(async () => { await enrichFollowed(); return livesHistory(); }));
 app.get('/api/customers', wrap((req) => listCustomers(String(req.query.q ?? ''), String(req.query.sort ?? 'recent'))));
 app.get('/api/customers/:key', wrap((req) => customerDetail(req.params.key)));
 app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));

@@ -242,6 +242,21 @@
   .vprods { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
   .vprod { display:flex; gap:10px; padding:10px; border-radius:12px; background:var(--fill); }
   .vprod .ph { width:64px; height:64px; flex:none; border-radius:10px; background:var(--card) center/cover no-repeat; border:1px solid var(--sep); }
+  dialog.ask { width:min(420px,92vw); text-align:center; }
+  dialog.ask form { padding:26px 24px 20px; gap:10px; align-items:stretch; }
+  dialog.ask h2 { font-size:19px; }
+  dialog.ask p { margin:0; font-size:14px; line-height:1.45; white-space:pre-line; }
+  dialog.ask .field { text-align:left; }
+  dialog.ask textarea { width:100%; min-height:120px; font-size:13px; font-family:ui-monospace,"SF Mono",Menlo,monospace; resize:vertical; }
+  dialog.ask select, dialog.ask input { width:100%; }
+  .ask-icon { width:52px; height:52px; margin:0 auto 4px; border-radius:50%; display:grid; place-items:center; background:var(--soft); color:var(--accent); }
+  .ask-icon.danger { background:var(--red-bg); color:var(--red); }
+  .ask-icon:empty { display:none; }
+  .ask-actions { display:flex; gap:10px; margin-top:8px; }
+  .ask-actions button { flex:1; min-height:46px; font-size:15px; border-radius:12px; }
+  .ask-actions button.danger-solid { background:var(--red); color:#fff; }
+  dialog.ask[open] { animation:askIn .18s ease-out; }
+  @keyframes askIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:none; } }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -535,7 +550,7 @@
             <button class="sm" onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents</button>
             <button class="sm" onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur</button>
             <button class="sm" onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
-            <button class="sm danger" onclick="if(confirm('Effacer les commentaires et commandes SANS archiver ? Vos produits sont gardés.'))api('/api/reset-live')">Réinitialiser sans archiver</button>
+            <button class="sm danger" onclick="resetLive()">Réinitialiser sans archiver</button>
           </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th class="hide-sm">Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table></div>
@@ -556,6 +571,15 @@
   </nav>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="askDlg" class="ask" aria-labelledby="askTitle">
+  <form method="dialog" id="askForm">
+    <div class="ask-icon" id="askIcon" aria-hidden="true"></div>
+    <h2 id="askTitle"></h2>
+    <p id="askMsg" class="muted"></p>
+    <div id="askFields" class="stack" style="gap:10px"></div>
+    <div class="ask-actions"><button type="button" id="askCancel" value="cancel">Annuler</button><button type="submit" id="askOk" class="primary" value="ok">OK</button></div>
+  </form>
+</dialog>
 <dialog id="prodDlg" aria-labelledby="prodTitle">
   <form method="dialog" onsubmit="event.preventDefault(); saveProduct()">
     <div style="display:flex;justify-content:space-between;align-items:center"><h2 id="prodTitle">Nouveau produit</h2><button type="button" class="sm" onclick="q('#prodDlg').close()" aria-label="Fermer">✕</button></div>
@@ -663,9 +687,15 @@ async function detectLive() {
   refresh();
 }
 
+async function resetLive() {
+  const ok = await ask({ title: 'Réinitialiser sans archiver ?', message: 'Les commentaires et commandes de la session en cours seront effacés, sans être gardés dans Ventes en ligne. Vos produits sont conservés.', ok: 'Effacer', danger: true });
+  if (ok) { await api('/api/reset-live'); toast('Session réinitialisée'); }
+}
 async function newSession() {
-  const name = prompt('Nom à donner à cette vente archivée (ex. Live du 11 nov.). Les commandes confirmées seront retirées du stock.', S?.activeLive?.title || '');
-  if (name === null) return;
+  const r = await ask({ title: 'Terminer et archiver la vente', message: 'Les commandes confirmées seront retirées du stock, les autres libérées. La vente reste consultable dans Ventes en ligne.', ok: 'Archiver',
+    fields: [{ name: 'name', label: 'Nom de la vente', value: S?.activeLive?.title || '', placeholder: 'Ex. Live du 11 nov.' }] });
+  if (!r) return;
+  const name = r.name;
   const s = await api('/api/sessions/new', { name });
   toast(`« ${s.name} » archivée. Prêt pour la prochaine vente.`);
   loadLives();
@@ -697,11 +727,12 @@ function setCurrent(i) { currentIdx = i; localStorage.setItem('lc_current', i); 
 
 async function copyComment(code) {
   const { text } = await get(`/api/products/${code}/comment`);
-  await navigator.clipboard.writeText(text).then(() => toast(`Texte ${code} copié — collez-le dans le live puis épinglez-le`)).catch(() => prompt('Copiez ce texte :', text));
+  await navigator.clipboard.writeText(text).then(() => toast(`Texte ${code} copié — collez-le dans le live puis épinglez-le`)).catch(() => ask({ title: 'Copiez ce texte', message: 'Sélectionnez le texte, copiez-le, puis collez-le dans le live.', cancel: false, ok: 'Fermer', icon: 'info', fields: [{ name: 't', type: 'textarea', value: text, readonly: true }] }));
 }
 function registerComment(code) {
-  const id = prompt("Collez l'id du commentaire publié (ou son lien contenant comment_id=) :");
-  if (id) api(`/api/products/${code}/register-comment`, { commentId: id });
+  ask({ title: `Commentaire ${code} publié à la main`, message: 'Collez le lien du commentaire (il contient « comment_id= ») ou son identifiant. Les « +1 » en réponse seront alors reconnus.', ok: 'Enregistrer',
+    fields: [{ name: 'id', label: 'Lien ou identifiant', placeholder: 'https://www.facebook.com/…comment_id=…' }] })
+    .then((r) => { if (r?.id) api(`/api/products/${code}/register-comment`, { commentId: r.id }).then(() => toast('Commentaire produit enregistré')); });
 }
 
 // ---------- Guide « Pour bien démarrer »
@@ -869,6 +900,53 @@ function render() {
   q('#urls').innerHTML = `Adresse de retour Facebook : <code>${esc(S.redirectUri)}</code><br>Webhook : <code>${esc(S.webhookUrl)}</code>`;
 }
 
+// ---------- Fenêtres de l'app (remplacent confirm / prompt du navigateur)
+const ICONS = {
+  danger: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  info: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>',
+  edit: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+};
+/**
+ * ask({ title, message, ok, cancel, danger, icon, fields: [{ name, label, value, placeholder, type: 'text'|'number'|'select'|'textarea', options, readonly }], onOpen })
+ * → Promise : null si annulé, sinon les valeurs des champs ({} s'il n'y en a pas).
+ */
+function ask(o) {
+  const dlg = q('#askDlg');
+  q('#askTitle').textContent = o.title || '';
+  q('#askMsg').textContent = o.message || '';
+  q('#askMsg').hidden = !o.message;
+  const ic = q('#askIcon'); ic.className = 'ask-icon' + (o.danger ? ' danger' : ''); ic.innerHTML = o.icon === false ? '' : ICONS[o.icon || (o.danger ? 'danger' : o.fields?.length ? 'edit' : 'info')];
+  q('#askFields').innerHTML = (o.fields || []).map((f, i) => {
+    const id = `askF${i}`, val = esc(f.value ?? '');
+    const input = f.type === 'select'
+      ? `<select id="${id}" name="${esc(f.name)}">${(f.options || []).map((op) => `<option value="${esc(op.value)}" ${String(op.value) === String(f.value ?? '') ? 'selected' : ''}>${esc(op.label)}</option>`).join('')}</select>`
+      : f.type === 'textarea'
+        ? `<textarea id="${id}" name="${esc(f.name)}" ${f.readonly ? 'readonly' : ''} placeholder="${esc(f.placeholder || '')}">${val}</textarea>`
+        : `<input id="${id}" name="${esc(f.name)}" type="${f.type === 'number' ? 'number' : 'text'}" ${f.type === 'number' ? 'min="1" inputmode="numeric"' : ''} value="${val}" placeholder="${esc(f.placeholder || '')}" ${f.readonly ? 'readonly' : ''} autocomplete="off">`;
+    return `<label class="field" for="${id}">${esc(f.label || '')}${input}</label>`;
+  }).join('');
+  q('#askOk').textContent = o.ok || 'OK';
+  q('#askOk').className = o.danger ? 'danger-solid' : 'primary';
+  q('#askCancel').textContent = o.cancel || 'Annuler';
+  q('#askCancel').hidden = o.cancel === false;
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.close(); q('#askForm').onsubmit = null; q('#askCancel').onclick = null; dlg.oncancel = null; resolve(v); };
+    q('#askForm').onsubmit = (e) => {
+      e.preventDefault();
+      const vals = {};
+      q('#askFields').querySelectorAll('[name]').forEach((el) => { vals[el.name] = el.value; });
+      done(vals);
+    };
+    q('#askCancel').onclick = () => done(null);
+    dlg.oncancel = (e) => { e.preventDefault(); done(null); };
+    dlg.showModal();
+    o.onOpen?.(dlg);
+    const first = q('#askFields').querySelector('input:not([readonly]), select, textarea');
+    (first || q('#askOk')).focus();
+    if (first?.select && first.tagName === 'INPUT') first.select();
+  });
+}
+
 // ---------- Produits : ajout et modification
 let editingCode = null, pendingPhoto = null, photoAction = null; // photoAction : 'set' | 'remove' | null
 
@@ -941,7 +1019,8 @@ async function saveProduct() {
   q('#prodDlg').close(); toast(body.originalCode ? `${j.code} modifié` : `${j.code} ajouté au catalogue`); refresh();
 }
 async function deleteProduct() {
-  if (!editingCode || !confirm(`Supprimer ${editingCode} du catalogue ?`)) return;
+  if (!editingCode) return;
+  if (!(await ask({ title: `Supprimer ${editingCode} ?`, message: 'Le produit sera retiré du catalogue et de l’ordre de passage. Les commandes passées restent dans l’historique.', ok: 'Supprimer', danger: true }))) return;
   const res = await fetch(`/api/products/${editingCode}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) { q('#pErr').textContent = j.error || 'Erreur'; return; }
@@ -1135,7 +1214,7 @@ async function loadStats() {
 // ---------- Ventes en ligne
 async function closeSale(id) {
   const name = vtList.find((x) => x.objectId === id && x.current)?.name || 'cette vente';
-  if (!confirm(`Terminer « ${name} » ?\n\nPlus aucune commande ne sera prise sur cette vente (commentaires ni saisie rapide). Les commandes déjà passées restent, et les clients peuvent encore confirmer sur Messenger.`)) return;
+  if (!(await ask({ title: `Terminer « ${name} » ?`, message: 'Plus aucune commande ne sera prise sur cette vente (commentaires ni saisie rapide). Les commandes déjà passées restent, et les clients peuvent encore confirmer sur Messenger.', ok: 'Terminer la vente', danger: true }))) return;
   await api(`/api/sales/${encodeURIComponent(id)}/close`); toast('Vente terminée : elle ne prend plus de commandes'); loadLives();
 }
 async function reopenSale(id) {
@@ -1260,7 +1339,7 @@ async function logout() {
   location.href = '/connexion';
 }
 async function disconnectFacebook() {
-  if (!confirm('Déconnecter Facebook pour cette boutique ? Vos produits, commandes et lives sont gardés. Il faudra reconnecter Facebook avant le prochain live.')) return;
+  if (!(await ask({ title: 'Déconnecter Facebook ?', message: 'Vos produits, commandes et ventes sont gardés. Il faudra reconnecter Facebook avant le prochain live.', ok: 'Déconnecter', danger: true }))) return;
   await api('/api/facebook/disconnect'); toast('Facebook déconnecté');
 }
 function renderFacebook() {
@@ -1271,10 +1350,23 @@ function renderFacebook() {
     : `<p class="muted" style="margin:0 0 12px">Reliez la Page Facebook qui fait vos lives.</p><a class="btn primary" href="/auth/login">Connecter Facebook</a>`;
 }
 
-function resolve(id) {
-  const code = prompt('Code produit (ex. JP01) :'); if (!code) return;
-  const variant = prompt('Taille ou couleur (vide si unique) :') || undefined;
-  const quantity = Number(prompt('Quantité :', '1')) || 1;
+async function resolve(id) {
+  const it = S.intents.find((x) => x.id === id) || {};
+  const prodOpts = S.products.map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` }));
+  const code0 = it.code && S.products.some((p) => p.code === it.code) ? it.code : S.products[0]?.code;
+  const varOpts = (c) => { const p = S.products.find((x) => x.code === c); return (p?.variants || []).map((v) => ({ value: v.label, label: `${v.label} · ${(S.stock.find((s) => s.code === c)?.variants.find((x) => x.label === v.label)?.available) ?? 0} dispo` })); };
+  const r = await ask({ title: 'Valider la commande', message: it.rawText ? `« ${it.rawText} »${it.authorName ? ' — ' + it.authorName : ''}` : '', ok: 'Valider',
+    fields: [
+      { name: 'code', label: 'Produit', type: 'select', options: prodOpts, value: code0 },
+      { name: 'variant', label: 'Taille ou couleur', type: 'select', options: varOpts(code0), value: it.variant },
+      { name: 'quantity', label: 'Quantité', type: 'number', value: it.quantity || 1 },
+    ],
+    onOpen: (dlg) => {
+      const sc = dlg.querySelector('select[name=code]'), sv = dlg.querySelector('select[name=variant]');
+      sc.onchange = () => { sv.innerHTML = varOpts(sc.value).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join(''); };
+    } });
+  if (!r) return;
+  const code = r.code, variant = r.variant || undefined, quantity = Number(r.quantity) || 1;
   api(`/api/intents/${id}/resolve`, { action: 'accept', code: code.toUpperCase(), variant, quantity });
 }
 

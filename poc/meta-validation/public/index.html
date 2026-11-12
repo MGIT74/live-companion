@@ -168,6 +168,19 @@
   .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .ok-msg { padding:10px 12px; border-radius:10px; background:var(--green-bg); color:var(--green); font-size:14px; }
   .ok-msg:empty { display:none; }
+  [hidden] { display:none !important; }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:190px; padding-top:6px; }
+  .bars .b { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100%; font-size:11px; color:var(--muted); }
+  .bars .b i { display:block; width:100%; max-width:30px; min-height:3px; border-radius:6px 6px 3px 3px; background:var(--soft); }
+  .bars .b.has i { background:var(--accent); }
+  .bars .b:hover i { background:var(--accent2); }
+  .bars .b span { white-space:nowrap; }
+  .kpis.k8 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .kpi .h { font-size:12px; color:var(--muted); }
+  .clickrow { cursor:pointer; }
+  .clickrow:hover td { background:var(--fill); }
+  .range { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+  .range label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted); }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -190,6 +203,12 @@
     .tabbar button[aria-current="page"] { color:var(--accent); }
     .toast { bottom:84px; }
     .hide-sm { display:none; }
+    .kpis.k8 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .kpis.k8 .kpi .v { font-size:20px; }
+    #stSeg { overflow-x:auto; max-width:100%; flex-wrap:nowrap; scrollbar-width:none; }
+    #stSeg button { flex:none; }
+    .range input { min-width:0; width:100%; }
+    .range label { flex:1 1 140px; }
   }
 </style>
 </head>
@@ -198,11 +217,12 @@
   <nav class="side" aria-label="Menu principal">
     <div class="brand"><span class="mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg></span>Live Companion</div>
     <label class="page-box"><span class="muted">Page Facebook</span><select id="pageSel" aria-label="Page Facebook"></select></label>
+    <button class="nav" data-view="stats"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
+    <button class="nav" data-view="lives"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lives passés</button>
     <button class="nav" data-view="regie"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie live</button>
     <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Réservations<span class="count" id="navReview"></span></button>
     <button class="nav" data-view="messenger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
     <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits et stock</button>
-    <button class="nav" data-view="sessions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Sessions archivées</button>
     <button class="nav" data-view="reglages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Connexion et tests</button>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Apparence" id="themeSeg" style="width:100%">
@@ -222,6 +242,45 @@
         <a href="/auth/login" class="btn primary" id="fbBtn">Connecter Facebook</a>
       </div>
     </div>
+
+    <!-- ================= Statistiques ================= -->
+    <section class="view" id="v-stats" aria-label="Statistiques">
+      <div class="top"><div><h1>Statistiques</h1><div class="muted" style="font-size:15px;margin-top:4px" id="stPeriodLabel"></div></div></div>
+      <div class="card" style="padding:14px 16px">
+        <div class="row" style="margin:0;justify-content:space-between">
+          <div class="seg" role="group" aria-label="Période" id="stSeg">
+            <button type="button" data-r="today">Aujourd’hui</button><button type="button" data-r="yesterday">Hier</button><button type="button" data-r="7d">7 jours</button><button type="button" data-r="30d">30 jours</button><button type="button" data-r="month">Ce mois</button><button type="button" data-r="custom">Personnalisé</button>
+          </div>
+        </div>
+        <form class="range" id="stCustom" hidden style="margin-top:12px" onsubmit="event.preventDefault(); loadStats('custom')">
+          <label>Du<input type="datetime-local" id="stFrom" required></label>
+          <label>Au<input type="datetime-local" id="stTo" required></label>
+          <button class="primary">Afficher</button>
+        </form>
+      </div>
+      <div class="kpis k8">
+        <div class="card kpi"><span class="l">Chiffre d’affaires</span><span class="v" id="kRev">…</span><span class="h">ventes confirmées</span></div>
+        <div class="card kpi"><span class="l">En attente</span><span class="v" id="kPend">…</span><span class="h">réservé, pas encore confirmé</span></div>
+        <div class="card kpi"><span class="l">Commandes confirmées</span><span class="v" id="kOrd">…</span><span class="h" id="kItems"></span></div>
+        <div class="card kpi"><span class="l">Clients</span><span class="v" id="kCust">…</span><span class="h" id="kBasket"></span></div>
+      </div>
+      <div class="grid cols-2">
+        <div class="card"><div class="card-head"><h2 id="stSeriesTitle">Chiffre d’affaires</h2><span class="muted" id="kRate"></span></div><div class="bars" id="stSeries"></div></div>
+        <div class="card"><div class="card-head"><h2>Heures qui vendent le plus</h2><span class="muted">heure des commandes</span></div><div class="bars" id="stHours"></div></div>
+      </div>
+      <div class="grid cols-2">
+        <div class="card"><h2 style="margin-bottom:6px">Produits les plus vendus</h2><div id="stProducts"></div></div>
+        <div class="card"><h2 style="margin-bottom:6px">Meilleurs clients</h2><div id="stCustomers"></div></div>
+      </div>
+      <div class="card"><div class="card-head"><h2>Lives de la période</h2><button class="sm" onclick="show('lives')">Tous les lives</button></div><div id="stLives" class="table-wrap"></div></div>
+    </section>
+
+    <!-- ================= Lives passés ================= -->
+    <section class="view" id="v-lives" aria-label="Lives passés">
+      <div class="top"><div><h1>Lives passés</h1><div class="muted" style="font-size:15px;margin-top:4px">Chaque live terminé est gardé ici avec ses ventes.</div></div><button class="primary" onclick="newSession()">Terminer et archiver le live actuel</button></div>
+      <div class="card"><div id="livesList" class="table-wrap"><div class="empty">Chargement…</div></div></div>
+      <div class="card" id="liveDetail" hidden></div>
+    </section>
 
     <!-- ================= Régie ================= -->
     <section class="view" id="v-regie" aria-label="Régie live">
@@ -330,11 +389,6 @@
       </div>
     </section>
 
-    <!-- ================= Sessions ================= -->
-    <section class="view" id="v-sessions" aria-label="Sessions archivées">
-      <div class="top"><h1>Sessions archivées</h1><button class="primary" onclick="newSession()">Nouvelle session (archiver l’actuelle)</button></div>
-      <div class="card"><div id="sessions" class="table-wrap muted">Aucune session archivée.</div></div>
-    </section>
 
     <!-- ================= Mon compte ================= -->
     <section class="view" id="v-compte" aria-label="Mon compte">
@@ -365,6 +419,10 @@
       <div class="card">
         <h2 style="margin-bottom:12px">Facebook</h2>
         <div id="fbBox"></div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:10px">Autres écrans</h2>
+        <div class="row" style="margin:0"><button onclick="show('lives')">Lives passés</button><button onclick="show('messenger')">Messenger</button><button onclick="show('stats')">Statistiques</button></div>
       </div>
       <div class="card">
         <div class="card-head" style="margin:0"><div><h2>Outils techniques</h2><span class="muted">Tests de l’API Meta et journal.</span></div><button onclick="show('reglages')">Ouvrir</button></div>
@@ -404,11 +462,11 @@
   </main>
 
   <nav class="tabbar" aria-label="Menu">
+    <button data-view="stats"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
     <button data-view="regie"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie</button>
     <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Réservations<span id="tabReview"></span></span></button>
-    <button data-view="messenger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
     <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits</button>
-    <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Compte</button>
+    <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Plus</button>
   </nav>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -470,10 +528,12 @@ function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
   document.querySelectorAll('[data-view]').forEach((b) => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   try { localStorage.setItem('lc.view', view); } catch (e) {}
+  if (view === 'stats') loadStats();
+  if (view === 'lives') loadLives();
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
-show((() => { try { return localStorage.getItem('lc.view') || 'regie'; } catch (e) { return 'regie'; } })());
+queueMicrotask(() => show((() => { try { const v = localStorage.getItem('lc.view'); return v && document.getElementById('v-' + v) ? v : 'stats'; } catch (e) { return 'stats'; } })()));
 
 // ---------- Apparence
 function setTheme(t) {
@@ -517,22 +577,16 @@ async function detectLive() {
 }
 
 async function newSession() {
-  const name = prompt('Nom de la session à archiver (ex. Live 11 nov — Hands Graphic) :', S?.activeLive?.title || '');
+  const name = prompt('Nom du live à archiver (ex. Live du 11 nov.). Les commandes confirmées seront retirées du stock.', S?.activeLive?.title || '');
   if (name === null) return;
   const s = await api('/api/sessions/new', { name });
-  toast(`Session « ${s.name} » archivée. Nouvelle session prête.`);
-  loadSessions();
-}
-async function loadSessions() {
-  const list = await get('/api/sessions');
-  q('#sessions').innerHTML = list.length ? '<table><thead><tr><th>Session</th><th>Archivée le</th><th>Commentaires</th><th>Réservations</th><th>Confirmées</th><th></th></tr></thead><tbody>' +
-    list.map((s) => `<tr><td class="strong" style="color:var(--ink)">${esc(s.name)}</td><td>${new Date(s.archivedAt).toLocaleString('fr-FR')}</td><td>${s.comments}</td><td>${s.intents}</td><td>${s.confirmed}</td><td><a class="btn sm" href="/api/sessions/${s.id}/download">Télécharger</a></td></tr>`).join('') + '</tbody></table>'
-    : '<div class="empty">Aucune session archivée.</div>';
+  toast(`Live « ${s.name} » archivé. Nouveau live prêt.`);
+  loadLives();
 }
 
 async function listPosts() {
   const r = await get('/api/posts');
-  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span style="color:var(--ink)">${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString('fr-FR')}</span> <button class="sm" onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + (p.message || '').slice(0, 30) })})'>Suivre cette publication</button></div>`).join('') : '<div class="row">Aucune publication sur la Page : publiez-en une puis réessayez.</div>';
+  q('#posts').innerHTML = r.data.length ? r.data.map((p) => `<div class="row"><span style="color:var(--ink)">${esc((p.message || 'Publication sans texte').slice(0, 60))}</span> <span class="muted">${new Date(p.created_time).toLocaleString('fr-FR')}</span> <button class="sm" onclick='api("/api/lives/select",${JSON.stringify({ id: p.id, title: 'Publication : ' + ((p.message || '').trim().slice(0, 30) || new Date(p.created_time).toLocaleDateString('fr-FR')) })})'>Suivre cette publication</button></div>`).join('') : '<div class="row">Aucune publication sur la Page : publiez-en une puis réessayez.</div>';
 }
 
 async function tryParse() {
@@ -595,6 +649,7 @@ function render() {
   q('#fbBtn').style.display = S.connected ? 'none' : '';
   q('#pageSel').innerHTML = '<option value="">Choisir une Page…</option>' + S.pages.map((p) => `<option value="${p.id}" ${p.id === S.selectedPageId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   const isPost = S.activeLive && /^Publication/.test(S.activeLive.title || '');
+  if (S.activeLive && /^Publication\s*:\s*$/.test(S.activeLive.title || '')) S.activeLive.title = 'Publication sans texte';
   q('#live').textContent = S.activeLive ? (isPost ? S.activeLive.title : `LIVE SUIVI · ${S.activeLive.title || S.activeLive.id}`) : 'Aucun live suivi';
   q('#live').className = 'pill' + (S.activeLive ? (isPost ? ' AWAIT_CONFIRM' : ' live-on') : '');
   q('#autoPR').checked = S.settings.autoPrivateReply;
@@ -675,6 +730,7 @@ function render() {
       ${i.reason || i.privateReply ? `<div class="muted">${i.reason ? why(i.reason) : ''}${i.privateReply ? `${i.reason ? ' · ' : ''}Message privé <span class="pill ${i.privateReply.status}">${fr(i.privateReply.status)}</span>${i.privateReply.error ? ' ' + esc(i.privateReply.error) : ''}` : ''}</div>` : ''}
       <div class="row">
         ${['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status) ? `<button class="primary sm" onclick="resolve('${i.id}')">Valider…</button>` : ''}
+        ${i.status === 'RESERVED' ? `<button class="sm" style="background:var(--green-bg);color:var(--green)" onclick="api('/api/intents/${i.id}/resolve',{action:'confirm'}).then(()=>toast('Commande confirmée : comptée dans le chiffre d’affaires'))">Confirmer la commande</button>` : ''}
         ${i.commentId && i.code && !i.privateReply ? `<button class="primary sm" onclick="api('/api/intents/${i.id}/private-reply').then(()=>toast('Message privé envoyé'))">Envoyer le message privé</button>` : ''}
         ${!['REJECTED', 'CANCELLED'].includes(i.status) ? `<button class="sm" onclick="api('/api/intents/${i.id}/resolve',{action:'reject'})">Rejeter</button>` : ''}
         ${i.privateReply?.status === 'SENT' ? `<button class="sm" onclick="api('/api/comments/${i.commentId}/second-reply').then(r=>toast(r.accepted?'2e message ACCEPTÉ (inattendu)':'2e message refusé (attendu)'))">Tester un 2e message</button>` : ''}
@@ -792,6 +848,96 @@ async function deleteProduct() {
   q('#prodDlg').close(); toast(`${editingCode} supprimé`); refresh();
 }
 
+// ---------- Statistiques
+var stRange = (() => { try { return localStorage.getItem('lc.statRange') || '7d'; } catch (e) { return '7d'; } })();
+const pad = (n) => String(n).padStart(2, '0');
+const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function rangeDates(r) {
+  const now = new Date(), start = new Date(now); start.setHours(0, 0, 0, 0);
+  if (r === 'today') return [start, now];
+  if (r === 'yesterday') { const y = new Date(start); y.setDate(y.getDate() - 1); return [y, start]; }
+  if (r === '7d') { const f = new Date(start); f.setDate(f.getDate() - 6); return [f, now]; }
+  if (r === '30d') { const f = new Date(start); f.setDate(f.getDate() - 29); return [f, now]; }
+  if (r === 'month') { const f = new Date(start); f.setDate(1); return [f, now]; }
+  const f = new Date(q('#stFrom').value), t = new Date(q('#stTo').value);
+  return [f, t];
+}
+function bars(el, points, labelEvery = 1) {
+  const max = Math.max(1, ...points.map((p) => p.v));
+  el.innerHTML = points.map((p, i) => `<div class="b ${p.v ? 'has' : ''}" title="${esc(p.title)}"><i style="height:${Math.round(p.v / max * 100)}%"></i><span>${i % labelEvery === 0 ? esc(p.label) : '&nbsp;'}</span></div>`).join('');
+  el.setAttribute('role', 'img');
+}
+const shortMga = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' M Ar' : n >= 1e3 ? Math.round(n / 1e3) + ' k Ar' : n + ' Ar';
+const dt = (d, withTime = true) => d ? new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}) }) : '—';
+function livePeriod(l) {
+  if (!l.startedAt) return l.endedAt ? `archivé le ${dt(l.endedAt)}` : '';
+  if (!l.endedAt) return `depuis ${dt(l.startedAt)}`;
+  const same = new Date(l.startedAt).toDateString() === new Date(l.endedAt).toDateString();
+  return `${dt(l.startedAt)} → ${same ? new Date(l.endedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : dt(l.endedAt)}`;
+}
+function livesTable(list, emptyText) {
+  if (!list.length) return `<div class="empty">${emptyText}</div>`;
+  return `<table><thead><tr><th>Live</th><th class="hide-sm">Commentaires</th><th>Réservations</th><th>Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
+    list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><b style="color:var(--ink)">${esc(l.name)}</b> ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}<br><span class="muted">${livePeriod(l)}</span></td>
+      <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td>${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
+}
+async function loadStats(r) {
+  if (r) stRange = r;
+  try { localStorage.setItem('lc.statRange', stRange); } catch (e) {}
+  document.querySelectorAll('#stSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.r === stRange)));
+  q('#stCustom').hidden = stRange !== 'custom';
+  if (stRange === 'custom' && (!q('#stFrom').value || !q('#stTo').value)) {
+    const [f] = rangeDates('7d'); const t = new Date(); t.setHours(23, 59, 0, 0);
+    q('#stFrom').value = toLocalInput(f); q('#stTo').value = toLocalInput(t);
+    if (!r) return;
+  }
+  const [from, to] = rangeDates(stRange);
+  if (!(from < to)) { toast('Choisissez une date de début avant la date de fin', true); return; }
+  q('#stPeriodLabel').textContent = `Du ${dt(from)} au ${dt(to)}`;
+  const d = await get(`/api/stats?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&tz=${new Date().getTimezoneOffset()}`);
+  const t = d.totals;
+  q('#kRev').textContent = mga(t.revenueMga); q('#kPend').textContent = mga(t.pendingMga);
+  q('#kOrd').textContent = t.orders; q('#kItems').textContent = `${t.itemsSold} article${t.itemsSold > 1 ? 's' : ''} vendu${t.itemsSold > 1 ? 's' : ''}`;
+  q('#kCust').textContent = t.customers; q('#kBasket').textContent = t.customers ? `panier moyen ${mga(t.averageBasketMga)}` : '';
+  q('#kRate').textContent = t.confirmationRate != null ? `${t.confirmationRate} % des réservations confirmées` : '';
+  const hourMode = d.series.unit === 'hour';
+  q('#stSeriesTitle').textContent = hourMode ? 'Chiffre d’affaires par heure' : 'Chiffre d’affaires par jour';
+  const pts = d.series.points.map((p) => ({ v: p.revenueMga, label: hourMode ? p.label.replace(' h', '') : String(Number(p.label.slice(8))), title: `${hourMode ? p.label : new Date(p.label).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} : ${mga(p.revenueMga)} (${p.orders} commande${p.orders > 1 ? 's' : ''})` }));
+  bars(q('#stSeries'), pts, hourMode ? 3 : Math.ceil(pts.length / 15));
+  bars(q('#stHours'), d.byHour.map((h) => ({ v: h.revenueMga, label: String(h.hour), title: `${h.hour} h – ${h.hour + 1} h : ${mga(h.revenueMga)} (${h.orders} commande${h.orders > 1 ? 's' : ''})` })), 3);
+  q('#stProducts').innerHTML = d.topProducts.length ? d.topProducts.map((p) => `<div class="pl" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span><span class="muted">${p.quantity} vendu${p.quantity > 1 ? 's' : ''} · </span><b>${mga(p.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucune vente confirmée sur la période.</div>';
+  q('#stCustomers').innerHTML = d.topCustomers.length ? d.topCustomers.map((c) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><b>${esc(c.name)}</b></span><span><span class="muted">${c.orders} commande${c.orders > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucun client sur la période.</div>';
+  q('#stLives').innerHTML = livesTable(d.lives, 'Aucun live sur la période.');
+}
+document.querySelectorAll('#stSeg button').forEach((b) => b.addEventListener('click', () => loadStats(b.dataset.r)));
+
+// ---------- Lives passés
+async function loadLives() {
+  const list = await get('/api/lives/history');
+  q('#livesList').innerHTML = livesTable(list, 'Aucun live pour l’instant. Quand un live est terminé, cliquez sur « Terminer et archiver le live actuel » : il apparaîtra ici avec ses ventes.');
+}
+async function openLive(id) {
+  if (q('#v-lives').classList.contains('on') === false) show('lives');
+  const d = await get(`/api/lives/history/${encodeURIComponent(id)}`);
+  const l = d.summary, el = q('#liveDetail');
+  el.hidden = false;
+  el.innerHTML = `<div class="card-head"><div><h2>${esc(l.name)} ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}</h2><span class="muted">${livePeriod(l)}</span></div>
+      <div class="row" style="margin:0">${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.id)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
+    <div class="kpis" style="margin-bottom:16px">
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : ''}</span></div>
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Confirmées</span><span class="v">${l.confirmed}</span><span class="h">sur ${l.reservations} réservations</span></div>
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Articles vendus</span><span class="v">${l.itemsSold}</span><span class="h">${l.customers} client${l.customers > 1 ? 's' : ''}</span></div>
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commentaires</span><span class="v">${l.comments}</span><span class="h">${l.cancelled} annulée${l.cancelled > 1 ? 's' : ''}</span></div>
+    </div>
+    <div class="grid cols-2">
+      <div><h2 style="margin-bottom:6px">Produits vendus</h2>${d.products.length ? d.products.map((p) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span><span class="muted">× ${p.quantity} · </span><b>${mga(p.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucune vente confirmée.</div>'}</div>
+      <div><h2 style="margin-bottom:6px">Clients</h2>${d.customers.length ? d.customers.map((c) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><b>${esc(c.name)}</b><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucun client confirmé.</div>'}</div>
+    </div>
+    <h2 style="margin:18px 0 6px">Toutes les réservations</h2>
+    <div class="table-wrap"><table><thead><tr><th>Heure</th><th>Client</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${d.sales.map((x) => `<tr><td>${new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.customer)}</td><td><span class="code">${esc(x.code)}</span> × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</td><td><span class="pill ${x.status}">${fr(x.status)}</span></td><td>${mga(x.amount)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Aucune réservation.</td></tr>'}</tbody></table></div>`;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ---------- Mon compte
 let ME = null;
 const initials = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase() || '').join('') || '?';
@@ -846,7 +992,6 @@ const es = new EventSource('/events');
 es.onmessage = (m) => { const e = JSON.parse(m.data); if (e.type === 'log') logLine(e.data.message); refresh(); };
 refresh();
 loadMe();
-loadSessions();
 // Vérifie (et rétablit si besoin) l'abonnement Messenger à l'ouverture de l'écran
 fetch('/api/pages/subscription/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(() => refresh()).catch(() => {});
 </script>

@@ -106,12 +106,23 @@ function commit(intent: Intent, comment?: LiveComment): Intent {
 }
 
 /** Validation manuelle par l'assistant d'une intention ambiguë. */
-export function resolveIntent(id: string, action: 'accept' | 'reject', patch: { code?: string; variant?: string; quantity?: number }) {
+/** Passe une réservation en « confirmée » : compte dans le chiffre d'affaires, au prix du moment. */
+export function confirmIntent(intent: Intent) {
+  if (intent.status !== 'RESERVED') return;
+  intent.status = 'CONFIRMED';
+  intent.confirmedAt = new Date().toISOString();
+  intent.unitPriceMga = findProduct(intent.code!)?.priceMga;
+}
+
+export function resolveIntent(id: string, action: 'accept' | 'reject' | 'confirm', patch: { code?: string; variant?: string; quantity?: number }) {
   const intent = state.intents.find((i) => i.id === id);
   if (!intent) throw new Error('Intention introuvable');
   if (action === 'reject') {
     releaseIntent(intent);
     intent.status = 'REJECTED';
+  } else if (action === 'confirm') {
+    if (intent.status !== 'RESERVED') throw new Error('Seule une réservation peut être confirmée');
+    confirmIntent(intent);
   } else {
     if (intent.status === 'RESERVED') return intent;
     const code = patch.code ?? intent.code;

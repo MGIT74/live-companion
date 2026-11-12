@@ -48,6 +48,9 @@ export interface Intent {
   authorName?: string;
   privateReply?: { status: 'SENT' | 'FAILED'; psid?: string; messageId?: string; error?: string; at: string };
   createdAt: string;
+  /** Confirmation (Messenger ou à la main) : date et prix unitaire figé pour le chiffre d'affaires. */
+  confirmedAt?: string;
+  unitPriceMga?: number;
 }
 
 export interface ProductComment { commentId: string; code: string; liveVideoId: string; objectId: string; at: string }

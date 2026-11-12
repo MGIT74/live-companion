@@ -15,6 +15,7 @@ import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { allShopIds, archiveSession, currentShopId, flushAll, listSessions, loadShops, persist, recordTest, resetLiveData, runInShop, sessionSnapshot, shopForPage, state, TESTS, type TestStatus } from './store.ts';
 import { changePassword, clearSession, login, requireAccount, signup, updateProfile, usersCount } from './accounts.ts';
 import { migrate } from './db.ts';
+import { liveDetail, livesHistory, periodStats } from './stats.ts';
 
 const app = express();
 app.set('trust proxy', true);
@@ -217,6 +218,17 @@ app.post('/api/ingestion/poll/start', wrap((req) => startPolling(targetId(req.bo
 app.post('/api/ingestion/poll/stop', wrap(() => stopPolling()));
 app.post('/api/ingestion/sse/start', wrap((req) => startSse(targetId(req.body.target))));
 app.post('/api/ingestion/sse/stop', wrap(() => stopSse()));
+// Statistiques et lives passés
+app.get('/api/stats', wrap((req) => {
+  const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+  const from = req.query.from ? new Date(String(req.query.from)) : new Date(to.getTime() - 30 * 86_400_000);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from >= to) throw new Error('Période invalide');
+  if (to.getTime() - from.getTime() > 400 * 86_400_000) throw new Error('Période trop longue (400 jours maximum)');
+  return periodStats(from, to, Number(req.query.tz ?? 0) || 0);
+}));
+app.get('/api/lives/history', wrap(() => livesHistory()));
+app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));
+
 // Mon compte
 app.get('/api/me', wrap((req) => req.account));
 app.post('/api/me', wrap((req) => updateProfile(req.account!, req.body)));

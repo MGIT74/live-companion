@@ -2,7 +2,7 @@ import { formatMga } from '@live-companion/order-parser';
 import { emit, log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { graph, GraphError, selectedPage } from './graph.ts';
-import { findProduct, releaseIntent } from './reservations.ts';
+import { confirmIntent, findProduct, releaseIntent } from './reservations.ts';
 import { persist, recordTest, state, type Conversation, type Intent } from './store.ts';
 
 /** Envoi via la Send API de la Page. */
@@ -173,7 +173,7 @@ export async function handleInboundMessage(event: any) {
   } else if (conv.step === 'ASK_PAYMENT') {
     conv.customer.payment = payload?.startsWith('PAY:') ? payload.slice(4) : text.trim();
     conv.step = 'DONE';
-    for (const i of intents) if (i.status === 'RESERVED') { i.status = 'CONFIRMED'; emit('intent', i); }
+    for (const i of intents) if (i.status === 'RESERVED') { confirmIntent(i); emit('intent', i); }
     const total = intents.filter((i) => i.status === 'CONFIRMED').reduce((s, i) => s + (findProduct(i.code!)?.priceMga ?? 0) * i.quantity, 0);
     recordTest('T10', { status: 'OK', evidenceFile: file, note: `Parcours complet : commande confirmée pour ${conv.customer.name}, total ${formatMga(total)}.` });
     await reply({ text: `✅ Commande confirmée !\n\n${intents.map(summary).join('\n\n')}\n\nTotal : ${formatMga(total)}\nLivraison : ${conv.customer.address}, ${conv.customer.city}\nPaiement : ${conv.customer.payment}\n\nNous vous recontactons pour la livraison. Misaotra !` });

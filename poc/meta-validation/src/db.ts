@@ -33,6 +33,39 @@ const TABLES = [
     data LONGTEXT NOT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+  // Grosses listes de chaque boutique : une ligne par commentaire, commande, conversation, commentaire produit.
+  `CREATE TABLE IF NOT EXISTS shop_comments (
+    shop_id VARCHAR(32) NOT NULL,
+    id VARCHAR(191) NOT NULL,
+    pos INT NOT NULL,
+    data MEDIUMTEXT NOT NULL,
+    PRIMARY KEY (shop_id, id),
+    INDEX shop_comments_pos (shop_id, pos)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS shop_intents (
+    shop_id VARCHAR(32) NOT NULL,
+    id VARCHAR(191) NOT NULL,
+    pos INT NOT NULL,
+    data MEDIUMTEXT NOT NULL,
+    PRIMARY KEY (shop_id, id),
+    INDEX shop_intents_pos (shop_id, pos)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS shop_conversations (
+    shop_id VARCHAR(32) NOT NULL,
+    id VARCHAR(191) NOT NULL,
+    pos INT NOT NULL,
+    data MEDIUMTEXT NOT NULL,
+    PRIMARY KEY (shop_id, id),
+    INDEX shop_conversations_pos (shop_id, pos)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS shop_product_comments (
+    shop_id VARCHAR(32) NOT NULL,
+    id VARCHAR(191) NOT NULL,
+    pos INT NOT NULL,
+    data MEDIUMTEXT NOT NULL,
+    PRIMARY KEY (shop_id, id),
+    INDEX shop_product_comments_pos (shop_id, pos)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
   `CREATE TABLE IF NOT EXISTS live_sessions (
     id VARCHAR(48) NOT NULL,
     shop_id VARCHAR(32) NOT NULL,

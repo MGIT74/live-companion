@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.ts';
-import { q } from './db.ts';
+import { pool, q } from './db.ts';
 import { shopContext } from './bus.ts';
 
 /**
@@ -163,34 +163,120 @@ export const state: State = new Proxy({} as State, {
   getOwnPropertyDescriptor: (_t, k) => ({ ...Reflect.getOwnPropertyDescriptor(current(), k), configurable: true }),
 });
 
-/** Charge toutes les boutiques au démarrage (quelques centaines de boutiques tiennent sans problème en mémoire). */
+// ---------------------------------------------------------------- Enregistrement en tables séparées
+/**
+ * Les petites données (Page, produits, ventes suivies, réglages) restent dans shop_state.
+ * Les grosses listes ont chacune leur table, une ligne par élément : à chaque enregistrement,
+ * seules les lignes nouvelles ou modifiées sont écrites (au lieu de réécrire toute la boutique).
+ */
+type Row = { [k: string]: unknown };
+interface Collection { table: string; list(s: State): Row[]; key(r: Row): string; assign(s: State, rows: Row[]): void }
+const COLLECTIONS: Record<'comments' | 'intents' | 'conversations' | 'productComments', Collection> = {
+  comments: { table: 'shop_comments', list: (s) => Object.values(s.comments) as unknown as Row[], key: (r) => String(r.id), assign: (s, rows) => { s.comments = Object.fromEntries(rows.map((r) => [String(r.id), r])) as unknown as State['comments']; } },
+  intents: { table: 'shop_intents', list: (s) => s.intents as unknown as Row[], key: (r) => String(r.id), assign: (s, rows) => { s.intents = rows as unknown as Intent[]; } },
+  conversations: { table: 'shop_conversations', list: (s) => Object.values(s.conversations) as unknown as Row[], key: (r) => String(r.psid), assign: (s, rows) => { s.conversations = Object.fromEntries(rows.map((r) => [String(r.psid), r])) as unknown as State['conversations']; } },
+  productComments: { table: 'shop_product_comments', list: (s) => s.productComments as unknown as Row[], key: (r) => `${r.commentId}|${r.code}`, assign: (s, rows) => { s.productComments = rows as unknown as ProductComment[]; } },
+};
+const COLL_KEYS = Object.keys(COLLECTIONS) as (keyof typeof COLLECTIONS)[];
+export const COLLECTION_TABLES = COLL_KEYS.map((k) => COLLECTIONS[k].table);
+
+/** Ce qui est déjà en base, par boutique : position + JSON de chaque ligne, et le petit bloc. */
+const written = new Map<string, Written>();
+interface Written { core?: string; rows: Record<string, Map<string, string>> }
+const emptyWritten = (): Written => ({ rows: Object.fromEntries(COLL_KEYS.map((k) => [k, new Map<string, string>()])) });
+
+function coreOf(s: State) {
+  const core: Record<string, unknown> = { ...s };
+  for (const k of COLL_KEYS) delete core[k];
+  return JSON.stringify(core);
+}
+
+/** Charge toutes les boutiques au démarrage. */
 export async function loadShops() {
   const rows = await q<{ shop_id: string; data: string }>('SELECT shop_id, data FROM shop_state');
-  for (const r of rows) shops.set(r.shop_id, { ...newState(), ...JSON.parse(r.data) });
+  for (const r of rows) {
+    const s: State = { ...newState(), ...JSON.parse(r.data) };
+    const w = emptyWritten();
+    for (const k of COLL_KEYS) {
+      const c = COLLECTIONS[k];
+      const lines = await q<{ id: string; pos: number; data: string }>(`SELECT id, pos, data FROM ${c.table} WHERE shop_id = ? ORDER BY pos`, [r.shop_id]);
+      if (lines.length) {
+        c.assign(s, lines.map((l) => JSON.parse(l.data)));
+        for (const l of lines) w.rows[k].set(l.id, `${l.pos}|${l.data}`);
+      }
+      // Sinon : ancienne boutique dont les listes sont encore dans le bloc JSON → écrites en tables au premier enregistrement.
+    }
+    shops.set(r.shop_id, s);
+    written.set(r.shop_id, w);
+    if (COLL_KEYS.some((k) => c0(s, k) && !w.rows[k].size)) await flush(r.shop_id); // migration immédiate
+  }
 }
+const c0 = (s: State, k: keyof typeof COLLECTIONS) => COLLECTIONS[k].list(s).length > 0;
 
 export async function createShopState(shopId: string, initial: State) {
   shops.set(shopId, initial);
-  await q('INSERT INTO shop_state (shop_id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)', [shopId, JSON.stringify(initial)]);
+  written.set(shopId, emptyWritten());
+  await q('INSERT INTO shop_state (shop_id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)', [shopId, coreOf(initial)]);
+  written.get(shopId)!.core = coreOf(initial);
+  await flush(shopId);
+}
+
+const CHUNK = 300;
+async function writeShop(shopId: string) {
+  const s = shops.get(shopId);
+  if (!s) return;
+  const w = written.get(shopId) ?? emptyWritten();
+  written.set(shopId, w);
+  let changed = false;
+  for (const k of COLL_KEYS) {
+    const c = COLLECTIONS[k], prev = w.rows[k], seen = new Map<string, string>(), upserts: unknown[][] = [];
+    c.list(s).forEach((row, pos) => {
+      const id = c.key(row).slice(0, 191), js = JSON.stringify(row), v = `${pos}|${js}`;
+      seen.set(id, v);
+      if (prev.get(id) !== v) upserts.push([shopId, id, pos, js]);
+    });
+    const deletes = [...prev.keys()].filter((id) => !seen.has(id));
+    for (let i = 0; i < upserts.length; i += CHUNK) {
+      await pool.query(`INSERT INTO ${c.table} (shop_id, id, pos, data) VALUES ? ON DUPLICATE KEY UPDATE pos = VALUES(pos), data = VALUES(data)`, [upserts.slice(i, i + CHUNK)]);
+    }
+    for (let i = 0; i < deletes.length; i += CHUNK) {
+      await q(`DELETE FROM ${c.table} WHERE shop_id = ? AND id IN (?)`, [shopId, deletes.slice(i, i + CHUNK)]);
+    }
+    if (upserts.length || deletes.length) { changed = true; w.rows[k] = seen; }
+  }
+  const core = coreOf(s);
+  if (core !== w.core) {
+    await q('UPDATE shop_state SET data = ?, updated_at = NOW() WHERE shop_id = ?', [core, shopId]);
+    w.core = core;
+  } else if (changed) {
+    await q('UPDATE shop_state SET updated_at = NOW() WHERE shop_id = ?', [shopId]);
+  }
+}
+/** Un seul enregistrement à la fois par boutique. */
+const chains = new Map<string, Promise<void>>();
+function flush(shopId: string) {
+  const next = (chains.get(shopId) ?? Promise.resolve()).then(() => writeShop(shopId)).catch((e) => console.error('Enregistrement impossible', e));
+  chains.set(shopId, next);
+  return next;
 }
 
 const timers = new Map<string, NodeJS.Timeout>();
-async function flush(shopId: string) {
-  const s = shops.get(shopId);
-  if (!s) return;
-  await q('UPDATE shop_state SET data = ?, updated_at = NOW() WHERE shop_id = ?', [JSON.stringify(s), shopId]);
-}
-/** Enregistre (200 ms après la dernière modification) les données de la boutique en cours. */
+const pendingSince = new Map<string, number>();
+/** Enregistre la boutique en cours : 200 ms après la dernière modification, et au plus tard toutes les 2 s pendant un live chargé. */
 export function persist() {
   const id = ctx.getStore();
   if (!id) return;
+  const since = pendingSince.get(id) ?? Date.now();
+  pendingSince.set(id, since);
+  const wait = Date.now() - since > 2000 ? 0 : 200;
   clearTimeout(timers.get(id));
-  timers.set(id, setTimeout(() => { timers.delete(id); flush(id).catch((e) => console.error('Enregistrement impossible', e)); }, 200));
+  timers.set(id, setTimeout(() => { timers.delete(id); pendingSince.delete(id); void flush(id); }, wait));
 }
 /** Enregistre tout immédiatement (arrêt du serveur). */
 export async function flushAll() {
   for (const [id, t] of timers) { clearTimeout(t); await flush(id); }
-  timers.clear();
+  timers.clear(); pendingSince.clear();
+  await Promise.all(chains.values());
 }
 
 /** Données de l'ancienne version (un seul vendeur, fichier data/state.json) : reprises par le premier compte. */

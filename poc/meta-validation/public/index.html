@@ -160,6 +160,14 @@
   .bar { height:6px; border-radius:99px; background:var(--fill2); overflow:hidden; }
   .bar span { display:block; height:100%; background:var(--green); border-radius:99px; transition:width .3s; }
   @media (max-width: 1100px) { .steps { grid-template-columns:1fr; } .step { flex-direction:row; align-items:center; } .step .txt { flex:1; min-width:0; } }
+  .me { display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; background:none; border:0; width:100%; text-align:left; cursor:pointer; justify-content:flex-start; min-height:0; font-weight:400; }
+  .me:hover, .me[aria-current="page"] { background:var(--fill); }
+  .avatar { width:36px; height:36px; flex:none; border-radius:50%; background:var(--soft); color:var(--accent); display:grid; place-items:center; font-weight:700; font-size:14px; }
+  .me .who { min-width:0; display:flex; flex-direction:column; }
+  .me .who b, .me .who span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .ok-msg { padding:10px 12px; border-radius:10px; background:var(--green-bg); color:var(--green); font-size:14px; }
+  .ok-msg:empty { display:none; }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -200,6 +208,7 @@
     <div class="seg" role="group" aria-label="Apparence" id="themeSeg" style="width:100%">
       <button type="button" data-theme="auto" style="flex:1">Auto</button><button type="button" data-theme="light" style="flex:1">Clair</button><button type="button" data-theme="dark" style="flex:1">Sombre</button>
     </div>
+    <button class="me" data-view="compte" style="margin-top:10px" aria-label="Mon compte"><span class="avatar" id="meAvatar">?</span><span class="who"><b id="meName">…</b><span class="muted" id="meShop"></span></span></button>
   </nav>
 
   <main class="main">
@@ -327,6 +336,41 @@
       <div class="card"><div id="sessions" class="table-wrap muted">Aucune session archivée.</div></div>
     </section>
 
+    <!-- ================= Mon compte ================= -->
+    <section class="view" id="v-compte" aria-label="Mon compte">
+      <div class="top"><h1>Mon compte</h1><button class="danger" onclick="logout()">Se déconnecter</button></div>
+      <div class="card">
+        <div class="row" style="margin:0 0 16px;gap:14px"><span class="avatar" id="meAvatar2" style="width:56px;height:56px;font-size:20px">?</span><div><b id="meName2" style="font-size:18px">…</b><br><span class="muted" id="meRole"></span></div></div>
+        <form class="stack" style="gap:12px" onsubmit="event.preventDefault(); saveProfile()">
+          <div class="form-grid">
+            <label class="field">Votre nom<input id="pfName" required autocomplete="name"></label>
+            <label class="field">E-mail<input id="pfEmail" type="email" required autocomplete="email"></label>
+            <label class="field">Nom de la boutique<input id="pfShop" required></label>
+          </div>
+          <div class="err" id="pfErr" role="alert"></div><div class="ok-msg" id="pfOk" role="status"></div>
+          <button class="primary" style="align-self:flex-start">Enregistrer</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:12px">Mot de passe</h2>
+        <form class="stack" style="gap:12px" onsubmit="event.preventDefault(); savePassword()">
+          <div class="form-grid">
+            <label class="field">Mot de passe actuel<input id="pwCur" type="password" required autocomplete="current-password"></label>
+            <label class="field">Nouveau mot de passe<input id="pwNew" type="password" required minlength="8" autocomplete="new-password"></label>
+          </div>
+          <div class="err" id="pwErr" role="alert"></div><div class="ok-msg" id="pwOk" role="status"></div>
+          <button class="primary" style="align-self:flex-start">Changer le mot de passe</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:12px">Facebook</h2>
+        <div id="fbBox"></div>
+      </div>
+      <div class="card">
+        <div class="card-head" style="margin:0"><div><h2>Outils techniques</h2><span class="muted">Tests de l’API Meta et journal.</span></div><button onclick="show('reglages')">Ouvrir</button></div>
+      </div>
+    </section>
+
     <!-- ================= Connexion et tests ================= -->
     <section class="view" id="v-reglages" aria-label="Connexion et tests">
       <h1>Connexion et tests</h1>
@@ -364,7 +408,7 @@
     <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Réservations<span id="tabReview"></span></span></button>
     <button data-view="messenger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
     <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits</button>
-    <button data-view="reglages"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Réglages</button>
+    <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Compte</button>
   </nav>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -458,12 +502,13 @@ function logLine(t) { const el = q('#log'); el.textContent = `${new Date().toLoc
 
 async function api(path, body) {
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+  if (res.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) { toast(json.error + (json.meta ? ' — ' + JSON.stringify(json.meta.error ?? json.meta) : ''), true); throw new Error(json.error); }
   refresh();
   return json;
 }
-async function get(path) { const r = await fetch(path); const j = await r.json(); if (!r.ok) { toast(j.error, true); throw new Error(j.error); } return j; }
+async function get(path) { const r = await fetch(path); if (r.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); } const j = await r.json(); if (!r.ok) { toast(j.error, true); throw new Error(j.error); } return j; }
 
 async function detectLive() {
   const r = await get('/api/lives');
@@ -563,6 +608,7 @@ function render() {
     : subOk ? `<span class="pill OK">Messenger actif</span> <span class="muted">Vérifié ${ago(sub.checkedAt)}. Rien à faire : l’activation est automatique.</span>`
     : `<span class="pill PARTIEL">Messenger inactif</span> <span class="muted">${sub?.error ? esc(sub.error) : 'Les messages des clients n’arrivent pas.'}</span>`;
   renderOnboarding(subOk);
+  renderFacebook();
 
   // Chiffres
   const review = S.intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).length;
@@ -696,6 +742,7 @@ async function pickPhoto(input) {
 function clearPhoto() { pendingPhoto = null; photoAction = 'remove'; showPreview(null); }
 async function post(path, body) {
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+  if (res.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); }
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(j.error || 'Erreur');
   return j;
@@ -742,6 +789,45 @@ async function deleteProduct() {
   q('#prodDlg').close(); toast(`${editingCode} supprimé`); refresh();
 }
 
+// ---------- Mon compte
+let ME = null;
+const initials = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase() || '').join('') || '?';
+function renderMe() {
+  if (!ME) return;
+  for (const id of ['#meAvatar', '#meAvatar2']) q(id).textContent = initials(ME.fullName);
+  q('#meName').textContent = ME.fullName; q('#meName2').textContent = ME.fullName;
+  q('#meShop').textContent = ME.shopName;
+  q('#meRole').textContent = `${ME.role === 'OWNER' ? 'Propriétaire' : 'Assistant'} · ${ME.shopName}`;
+  if (document.activeElement?.closest?.('#v-compte form')) return; // ne pas écraser une saisie en cours
+  q('#pfName').value = ME.fullName; q('#pfEmail').value = ME.email; q('#pfShop').value = ME.shopName;
+}
+async function loadMe() { ME = await get('/api/me'); renderMe(); }
+async function saveProfile() {
+  q('#pfErr').textContent = ''; q('#pfOk').textContent = '';
+  try { ME = await post('/api/me', { fullName: q('#pfName').value, email: q('#pfEmail').value, shopName: q('#pfShop').value }); renderMe(); q('#pfOk').textContent = 'Profil enregistré.'; }
+  catch (e) { q('#pfErr').textContent = e.message; }
+}
+async function savePassword() {
+  q('#pwErr').textContent = ''; q('#pwOk').textContent = '';
+  try { await post('/api/me/password', { current: q('#pwCur').value, next: q('#pwNew').value }); q('#pwCur').value = ''; q('#pwNew').value = ''; q('#pwOk').textContent = 'Mot de passe changé.'; }
+  catch (e) { q('#pwErr').textContent = e.message; }
+}
+async function logout() {
+  await fetch('/compte/deconnexion', { method: 'POST' }).catch(() => {});
+  location.href = '/connexion';
+}
+async function disconnectFacebook() {
+  if (!confirm('Déconnecter Facebook pour cette boutique ? Vos produits, réservations et sessions sont gardés. Il faudra reconnecter Facebook avant le prochain live.')) return;
+  await api('/api/facebook/disconnect'); toast('Facebook déconnecté');
+}
+function renderFacebook() {
+  const page = S.pages.find((p) => p.id === S.selectedPageId);
+  q('#fbBox').innerHTML = S.connected
+    ? `<div class="row" style="margin:0 0 12px"><span class="pill OK">Connecté</span>${page ? `<span>Page : <b>${esc(page.name)}</b></span>` : '<span class="muted">Aucune Page choisie</span>'}</div>
+       <div class="row" style="margin:0"><a class="btn" href="/auth/login">Reconnecter / changer de compte</a><button class="danger" onclick="disconnectFacebook()">Déconnecter Facebook</button></div>`
+    : `<p class="muted" style="margin:0 0 12px">Reliez la Page Facebook qui fait vos lives.</p><a class="btn primary" href="/auth/login">Connecter Facebook</a>`;
+}
+
 function resolve(id) {
   const code = prompt('Code produit (ex. JP01) :'); if (!code) return;
   const variant = prompt('Taille ou couleur (vide si unique) :') || undefined;
@@ -756,6 +842,7 @@ q('#pageSel').onchange = (e) => e.target.value && api('/api/pages/select', { pag
 const es = new EventSource('/events');
 es.onmessage = (m) => { const e = JSON.parse(m.data); if (e.type === 'log') logLine(e.data.message); refresh(); };
 refresh();
+loadMe();
 loadSessions();
 // Vérifie (et rétablit si besoin) l'abonnement Messenger à l'ouverture de l'écran
 fetch('/api/pages/subscription/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(() => refresh()).catch(() => {});

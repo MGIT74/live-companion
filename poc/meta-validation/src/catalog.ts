@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { log } from './bus.ts';
 import { config } from './config.ts';
-import { persist, state, type Product } from './store.ts';
+import { currentShopId, persist, state, type Product } from './store.ts';
 
 /**
  * Catalogue géré depuis l'écran (et non plus seulement products.json).
@@ -99,8 +99,9 @@ const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png',
 const MAX_BYTES = 4 * 1024 * 1024;
 
 function removePhotoFile(photo?: string) {
-  const name = photo?.match(/^\/photos\/([\w-]+\.(?:jpg|png|webp))$/)?.[1];
-  if (name) fs.rm(path.join(config.photosDir, name), { force: true }, () => {});
+  // /photos/<boutique>/<fichier> (ou /photos/<fichier> pour les photos d'avant les comptes)
+  const rel = photo?.match(/^\/photos\/((?:[a-f0-9]{24}\/)?[\w-]+\.(?:jpg|png|webp))$/)?.[1];
+  if (rel) fs.rm(path.join(config.photosDir, rel), { force: true }, () => {});
 }
 
 /** Enregistre la photo d'un produit (data URL envoyée par l'écran, déjà réduite côté navigateur). */
@@ -111,10 +112,12 @@ export function setProductPhoto(code: string, dataUrl: string) {
   if (!m) throw new Error('Photo invalide (JPEG, PNG ou WebP)');
   const buf = Buffer.from(m[2], 'base64');
   if (!buf.length || buf.length > MAX_BYTES) throw new Error('Photo trop lourde (4 Mo maximum)');
+  const shopId = currentShopId()!;
   const name = `${p.code.toLowerCase()}-${crypto.randomBytes(6).toString('hex')}.${TYPES[m[1]]}`;
-  fs.writeFileSync(path.join(config.photosDir, name), buf);
+  fs.mkdirSync(path.join(config.photosDir, shopId), { recursive: true });
+  fs.writeFileSync(path.join(config.photosDir, shopId, name), buf);
   removePhotoFile(p.photo);
-  p.photo = `/photos/${name}`;
+  p.photo = `/photos/${shopId}/${name}`;
   persist();
   log('info', `Photo du produit ${p.code} enregistrée`);
   return p;

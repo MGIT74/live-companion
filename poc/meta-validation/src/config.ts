@@ -21,7 +21,10 @@ export const config = {
   baseUrl: required('BASE_URL').replace(/\/$/, ''),
   webhookVerifyToken: required('WEBHOOK_VERIFY_TOKEN'),
   encryptionKey: required('ENCRYPTION_KEY'),
+  /** Code demandé une seule fois : à la création du premier compte (qui récupère les données existantes). */
   dashboardPassword: required('DASHBOARD_PASSWORD'),
+  databaseUrl: required('DATABASE_URL'),
+  allowSignup: process.env.ALLOW_SIGNUP !== 'false',
   dataDir: path.join(root, 'data'),
   photosDir: path.join(root, 'data', 'photos'),
   evidenceDir: path.join(root, 'evidence'),

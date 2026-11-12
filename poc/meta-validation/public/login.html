@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Connexion — Live Companion</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23007AFF'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='3.5'/%3E%3Cpath d='M8.5 8.5a10.6 10.6 0 0 0 0 15M23.5 8.5a10.6 10.6 0 0 1 0 15'/%3E%3C/g%3E%3C/svg%3E">
+<script>try { var th = localStorage.getItem('lc.theme'); if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th; } catch (e) {}</script>
+<style>
+  :root { color-scheme: light; --bg:#F2F2F7; --card:#FFFFFF; --fill:#F2F2F7; --fill2:#E5E5EA; --line:#D1D1D6; --ink:#1D1D1F; --muted:#6E6E73; --accent:#007AFF; --accent2:#0062CC; --soft:rgba(0,122,255,.12);
+    --red:#D70015; --red-bg:#FFE9E7; --shadow:0 1px 2px rgba(0,0,0,.04),0 12px 40px rgba(0,0,0,.08); --seg:rgba(118,118,128,.12); --seg-on:#FFFFFF; --seg-on-ink:#1D1D1F;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,system-ui,sans-serif; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg:#000000; --card:#1C1C1E; --fill:#2C2C2E; --fill2:#3A3A3C; --line:#48484A; --ink:#F5F5F7; --muted:#98989D; --accent:#0A84FF; --accent2:#409CFF; --soft:rgba(10,132,255,.24); --red:#FF453A; --red-bg:rgba(255,69,58,.18); --shadow:none; --seg:rgba(118,118,128,.24); --seg-on:#636366; --seg-on-ink:#FFFFFF; } }
+  :root[data-theme="dark"] { color-scheme: dark; --bg:#000000; --card:#1C1C1E; --fill:#2C2C2E; --fill2:#3A3A3C; --line:#48484A; --ink:#F5F5F7; --muted:#98989D; --accent:#0A84FF; --accent2:#409CFF; --soft:rgba(10,132,255,.24); --red:#FF453A; --red-bg:rgba(255,69,58,.18); --shadow:none; --seg:rgba(118,118,128,.24); --seg-on:#636366; --seg-on-ink:#FFFFFF; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font:15px/1.4 var(--font); letter-spacing:-.01em; -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:grid; place-items:center; padding:24px 16px; }
+  .card { width:min(420px,100%); background:var(--card); border-radius:22px; box-shadow:var(--shadow); padding:32px 28px; display:flex; flex-direction:column; gap:16px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+  .mark { width:40px; height:40px; border-radius:12px; background:var(--accent); display:grid; place-items:center; color:#fff; }
+  h1 { margin:6px 0 0; font-size:28px; letter-spacing:-.02em; }
+  p { margin:0; }
+  .muted { color:var(--muted); font-size:14px; }
+  .seg { display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--seg); }
+  .seg button { flex:1; border:0; background:transparent; min-height:36px; border-radius:9px; font:inherit; font-size:14px; font-weight:500; color:var(--muted); cursor:pointer; }
+  .seg button[aria-pressed="true"] { background:var(--seg-on); color:var(--seg-on-ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  label { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:500; }
+  input { font:inherit; color:inherit; min-height:48px; padding:10px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); outline:none; width:100%; }
+  input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--soft); }
+  .primary { font:inherit; border:0; min-height:52px; border-radius:14px; background:var(--accent); color:#fff; font-size:17px; font-weight:600; cursor:pointer; }
+  .primary:hover { background:var(--accent2); }
+  .primary:disabled { opacity:.5; }
+  .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
+  .err:empty { display:none; }
+  .note { padding:12px 14px; border-radius:12px; background:var(--soft); font-size:14px; }
+  [hidden] { display:none !important; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+  <form class="card" id="form" novalidate>
+    <div class="brand"><span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg></span>Live Companion</div>
+    <div>
+      <h1 id="title">Connexion</h1>
+      <p class="muted" id="subtitle" style="margin-top:6px">Vos lives, réservations et clients au même endroit.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Choix" id="modeSeg">
+      <button type="button" data-mode="login" aria-pressed="true">Se connecter</button>
+      <button type="button" data-mode="signup" aria-pressed="false">Créer ma boutique</button>
+    </div>
+    <div class="note" id="firstNote" hidden>Premier compte : il récupère la boutique existante (produits, photos, sessions, connexion Facebook). Entrez le code d’accès actuel, c’est l’ancien mot de passe du tableau de bord.</div>
+
+    <label data-signup hidden>Votre nom<input id="fullName" autocomplete="name"></label>
+    <label data-signup hidden>Nom de la boutique<input id="shopName" placeholder="Ex. Hands Graphic"></label>
+    <label>E-mail<input id="email" type="email" autocomplete="email" inputmode="email" required></label>
+    <label>Mot de passe<input id="password" type="password" autocomplete="current-password" required></label>
+    <label data-first hidden>Code d’accès<input id="accessCode" type="password" autocomplete="off"></label>
+
+    <div class="err" id="err" role="alert"></div>
+    <button class="primary" id="submit">Se connecter</button>
+  </form>
+</main>
+<script>
+const q = (s) => document.querySelector(s);
+let mode = 'login', info = { firstAccount: false, allowSignup: true };
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#modeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  const signup = m === 'signup';
+  document.querySelectorAll('[data-signup]').forEach((el) => { el.hidden = !signup; });
+  document.querySelectorAll('[data-first]').forEach((el) => { el.hidden = !(signup && info.firstAccount); });
+  q('#firstNote').hidden = !(signup && info.firstAccount);
+  q('#title').textContent = signup ? (info.firstAccount ? 'Créer le premier compte' : 'Créer ma boutique') : 'Connexion';
+  q('#subtitle').textContent = signup ? 'Gratuit pendant la phase de test.' : 'Vos lives, réservations et clients au même endroit.';
+  q('#submit').textContent = signup ? 'Créer ma boutique' : 'Se connecter';
+  q('#password').autocomplete = signup ? 'new-password' : 'current-password';
+  q('#err').textContent = '';
+  (signup ? q('#fullName') : q('#email')).focus();
+}
+document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+q('#form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = { email: q('#email').value, password: q('#password').value };
+  if (mode === 'signup') Object.assign(body, { fullName: q('#fullName').value, shopName: q('#shopName').value, accessCode: q('#accessCode').value });
+  q('#submit').disabled = true; q('#err').textContent = '';
+  try {
+    const r = await fetch(mode === 'signup' ? '/compte/inscription' : '/compte/connexion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Erreur, réessayez.');
+    location.href = '/';
+  } catch (err) {
+    q('#err').textContent = err.message;
+  } finally { q('#submit').disabled = false; }
+});
+
+fetch('/compte/etat').then((r) => r.json()).then((j) => {
+  info = j;
+  if (!j.allowSignup && !j.firstAccount) q('#modeSeg').hidden = true;
+  setMode(j.firstAccount ? 'signup' : 'login');
+}).catch(() => setMode('login'));
+</script>
+</body>
+</html>

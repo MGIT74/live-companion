@@ -5,7 +5,7 @@ import { emit, log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { graph, GraphError, selectedPage } from './graph.ts';
 import { handleParsed, parseOptions } from './reservations.ts';
-import { persist, recordTest, state, type LiveComment, type Source } from './store.ts';
+import { currentShopId, persist, recordTest, state, type LiveComment, type Source } from './store.ts';
 import { sendPrivateReplyForIntent } from './messenger.ts';
 
 const COMMENT_FIELDS = 'id,message,message_tags,created_time,from{id,name},parent{id}';
@@ -20,12 +20,40 @@ export interface RawComment {
   message_tags?: MessageTag[];
 }
 
-const stats = {
-  POLL: { received: 0, new: 0, withFrom: 0, withParent: 0 },
-  SSE: { received: 0, new: 0, withFrom: 0, withParent: 0, latencies: [] as number[] },
-  WEBHOOK: { received: 0, new: 0, withFrom: 0, withParent: 0 },
-};
+/** État de lecture propre à chaque boutique (chaque vendeur peut avoir son live en même temps). */
+interface Runtime {
+  stats: {
+    POLL: { received: number; new: number; withFrom: number; withParent: number };
+    SSE: { received: number; new: number; withFrom: number; withParent: number; latencies: number[] };
+    WEBHOOK: { received: number; new: number; withFrom: number; withParent: number };
+  };
+  pollTimer?: NodeJS.Timeout;
+  pollTarget?: string;
+  sseAbort?: AbortController;
+  sseWanted: boolean;
+  sseRetry: number;
+  sseGen: number;
+}
+const runtimes = new Map<string, Runtime>();
+function rt(): Runtime {
+  const id = currentShopId() ?? '_';
+  let r = runtimes.get(id);
+  if (!r) {
+    r = {
+      stats: {
+        POLL: { received: 0, new: 0, withFrom: 0, withParent: 0 },
+        SSE: { received: 0, new: 0, withFrom: 0, withParent: 0, latencies: [] },
+        WEBHOOK: { received: 0, new: 0, withFrom: 0, withParent: 0 },
+      },
+      sseWanted: false, sseRetry: 0, sseGen: 0,
+    };
+    runtimes.set(id, r);
+  }
+  return r;
+}
+
 export function ingestionStats() {
+  const stats = rt().stats;
   const lat = [...stats.SSE.latencies].sort((a, b) => a - b);
   const median = lat.length ? lat[Math.floor(lat.length / 2)] : undefined;
   return { ...stats, SSE: { ...stats.SSE, latencies: undefined, medianLatencyMs: median, samples: lat.length }, total: Object.keys(state.comments).length };
@@ -37,7 +65,7 @@ export function ingestionStats() {
  */
 export function ingestComment(raw: RawComment, liveVideoId: string, source: Source): LiveComment | undefined {
   if (!raw?.id) return undefined;
-  const s = stats[source];
+  const s = rt().stats[source];
   s.received++;
   if (raw.from?.id) s.withFrom++;
   const parentId = raw.parent?.id ?? raw.parent_id;
@@ -57,7 +85,7 @@ export function ingestComment(raw: RawComment, liveVideoId: string, source: Sour
   s.new++;
   const receivedAt = new Date();
   const latencyMs = raw.created_time ? receivedAt.getTime() - Date.parse(raw.created_time) : undefined;
-  if (source === 'SSE' && latencyMs !== undefined && latencyMs >= 0) stats.SSE.latencies.push(latencyMs);
+  if (source === 'SSE' && latencyMs !== undefined && latencyMs >= 0) rt().stats.SSE.latencies.push(latencyMs);
 
   const comment: LiveComment = {
     id: raw.id,
@@ -110,9 +138,6 @@ export function reparseComments() {
 
 // ---------------------------------------------------------------- Polling (T4)
 
-let pollTimer: NodeJS.Timeout | undefined;
-let pollTarget: string | undefined;
-
 export async function pollOnce(objectId: string) {
   const page = selectedPage();
   const res = await graph<{ data: RawComment[] }>('GET', `${objectId}/comments`, page.token, {
@@ -130,11 +155,12 @@ export async function pollOnce(objectId: string) {
 
 export async function startPolling(objectId: string, intervalMs = 5000) {
   stopPolling();
-  pollTarget = objectId;
+  const r = rt();
+  r.pollTarget = objectId;
   const first = await pollOnce(objectId);
   const file = saveEvidence('T4', `poll_first_${objectId}`, first);
   recordTest('T4', { evidenceFile: file, note: `Polling sur ${objectId} : ${first.count} commentaires lus au 1er appel.` });
-  pollTimer = setInterval(() => {
+  r.pollTimer = setInterval(() => {
     pollOnce(objectId).catch((e) => log('warn', `Polling : ${e.message}`));
   }, intervalMs);
   emit('ingestion', { polling: true, objectId });
@@ -142,17 +168,15 @@ export async function startPolling(objectId: string, intervalMs = 5000) {
 }
 
 export function stopPolling() {
-  clearInterval(pollTimer);
-  pollTimer = undefined;
-  if (pollTarget) emit('ingestion', { polling: false, objectId: pollTarget });
-  pollTarget = undefined;
+  const r = rt();
+  clearInterval(r.pollTimer);
+  r.pollTimer = undefined;
+  if (r.pollTarget) emit('ingestion', { polling: false, objectId: r.pollTarget });
+  r.pollTarget = undefined;
 }
 
 // ---------------------------------------------------------------- SSE (T5)
 
-let sseAbort: AbortController | undefined;
-let sseWanted = false;
-let sseRetry = 0;
 
 interface SseVariant { fields: boolean; proof: boolean; label: string }
 const SSE_VARIANTS: SseVariant[] = [
@@ -169,18 +193,19 @@ async function readSse(liveVideoId: string, variant: SseVariant, gen: number): P
   url.searchParams.set('comment_rate', 'one_hundred_per_second');
   if (variant.fields) url.searchParams.set('fields', COMMENT_FIELDS);
 
-  sseAbort = new AbortController();
-  const res = await fetch(url, { headers: { Accept: 'text/event-stream' }, signal: sseAbort.signal });
+  const r = rt();
+  r.sseAbort = new AbortController();
+  const res = await fetch(url, { headers: { Accept: 'text/event-stream' }, signal: r.sseAbort.signal });
   if (!res.ok || !res.body) {
     const body = await res.text().catch(() => '');
     const json = safeJson(body);
     if (!json?.error) json.error = { message: `HTTP ${res.status} : ${body.slice(0, 300) || '(réponse vide)'}` };
     throw new GraphError(res.status, json);
   }
-  if (gen !== sseGen) { sseAbort.abort(); return; }
+  if (gen !== r.sseGen) { r.sseAbort.abort(); return; }
   log('info', `SSE connecté sur ${liveVideoId} (${variant.label})`);
   emit('ingestion', { sse: true, liveVideoId });
-  sseRetry = 0;
+  r.sseRetry = 0;
 
   const decoder = new TextDecoder();
   let buffer = '';
@@ -209,22 +234,21 @@ function safeJson(s: string): any {
   try { return JSON.parse(s); } catch { return { raw: s }; }
 }
 
-let sseGen = 0;
-
 export function startSse(liveVideoId: string) {
   stopSse();
-  sseWanted = true;
-  const gen = ++sseGen; // une seule boucle active à la fois
+  const r = rt();
+  r.sseWanted = true;
+  const gen = ++r.sseGen; // une seule boucle active à la fois
   let v = 0;
   const failures: unknown[] = [];
   const loop = async () => {
-    while (sseWanted && gen === sseGen) {
+    while (r.sseWanted && gen === r.sseGen) {
       try {
         await readSse(liveVideoId, SSE_VARIANTS[v], gen);
-        if (gen !== sseGen) return;
+        if (gen !== r.sseGen) return;
         log('warn', 'Flux SSE terminé par le serveur, reconnexion…');
       } catch (e: any) {
-        if (!sseWanted || gen !== sseGen) return;
+        if (!r.sseWanted || gen !== r.sseGen) return;
         if (e instanceof GraphError && e.status >= 400 && e.status < 500) {
           failures.push({ variant: SSE_VARIANTS[v].label, status: e.status, body: e.body });
           log('warn', `SSE refusé (${SSE_VARIANTS[v].label}) : ${e.message}`);
@@ -233,7 +257,7 @@ export function startSse(liveVideoId: string) {
           const file = saveEvidence('T5', 'sse_refused', { liveVideoId, failures });
           recordTest('T5', { status: 'KO', evidenceFile: file, note: `SSE refusé par Meta (${e.message}). Repli : polling.` });
           log('error', 'SSE abandonné : Meta refuse le flux temps réel pour ce live. Le polling reste actif.');
-          sseWanted = false;
+          r.sseWanted = false;
           emit('ingestion', { sse: false });
           return;
         }
@@ -241,7 +265,7 @@ export function startSse(liveVideoId: string) {
       }
       // Rattrapage par polling pour combler le trou pendant la coupure.
       await pollOnce(state.activeLive?.id ?? liveVideoId).catch(() => undefined);
-      const wait = Math.min(30000, 1000 * 2 ** sseRetry++);
+      const wait = Math.min(30000, 1000 * 2 ** r.sseRetry++);
       emit('ingestion', { sse: false, reconnectInMs: wait });
       await new Promise((r) => setTimeout(r, wait));
     }
@@ -250,13 +274,15 @@ export function startSse(liveVideoId: string) {
 }
 
 export function stopSse() {
-  sseGen++;
-  sseWanted = false;
-  sseAbort?.abort();
-  sseAbort = undefined;
+  const r = rt();
+  r.sseGen++;
+  r.sseWanted = false;
+  r.sseAbort?.abort();
+  r.sseAbort = undefined;
   emit('ingestion', { sse: false });
 }
 
 export function ingestionStatus() {
-  return { polling: Boolean(pollTimer), pollTarget, sse: sseWanted };
+  const r = rt();
+  return { polling: Boolean(r.pollTimer), pollTarget: r.pollTarget, sse: r.sseWanted };
 }

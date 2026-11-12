@@ -5,7 +5,7 @@ import { log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { ingestComment } from './ingestion.ts';
 import { handleInboundMessage } from './messenger.ts';
-import { recordTest, state } from './store.ts';
+import { recordTest, runInShop, shopForPage, state } from './store.ts';
 
 /** GET /webhooks/meta — vérification de l'abonnement par Meta. */
 export function verifyWebhook(req: Request, res: Response) {
@@ -34,6 +34,15 @@ export function receiveWebhook(req: Request, res: Response) {
   if (body.object !== 'page') return;
 
   for (const entry of body.entry ?? []) {
+    // entry.id = la Page concernée → on traite l'événement dans la boutique qui l'a reliée.
+    const shopId = shopForPage(String(entry.id ?? ''));
+    if (!shopId) { log('warn', `Webhook ignoré : Page ${entry.id} reliée à aucune boutique.`); continue; }
+    runInShop(shopId, () => handleEntry(entry));
+  }
+}
+
+function handleEntry(entry: any) {
+  {
     for (const event of entry.messaging ?? []) {
       handleInboundMessage(event).catch((e) => log('error', `Traitement message : ${e.message}`));
     }

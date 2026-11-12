@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.ts';
+import { shopContext } from './bus.ts';
 
 fs.mkdirSync(config.evidenceDir, { recursive: true });
 
@@ -17,7 +18,9 @@ export function redact<T>(value: T): T {
  */
 export function saveEvidence(test: string, label: string, payload: unknown): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const file = path.join(config.evidenceDir, `${stamp}_${test}_${label.replace(/[^a-z0-9_-]/gi, '_')}.json`);
+  const dir = path.join(config.evidenceDir, shopContext.current() ?? 'general');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${stamp}_${test}_${label.replace(/[^a-z0-9_-]/gi, '_')}.json`);
   fs.writeFileSync(file, JSON.stringify(redact(payload), null, 2));
   return path.basename(file);
 }

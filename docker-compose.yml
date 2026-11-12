@@ -8,12 +8,36 @@ services:
       - .env
     environment:
       PORT: "3000"
+      # Base de données de l'app (comptes, boutiques, données de chaque boutique)
+      DATABASE_URL: mysql://live_companion:${MYSQL_PASSWORD:?Ajoutez MYSQL_PASSWORD dans les variables du site}@db:3306/live_companion
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "127.0.0.1:3047:3000"
     volumes:
       - poc-data:/app/poc/meta-validation/data
       - poc-evidence:/app/poc/meta-validation/evidence
 
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: live_companion
+      MYSQL_USER: live_companion
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Ajoutez MYSQL_PASSWORD dans les variables du site}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Ajoutez MYSQL_ROOT_PASSWORD dans les variables du site}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
 volumes:
   poc-data:
   poc-evidence:
+  db-data:

@@ -141,6 +141,10 @@
   .prod { display:flex; flex-direction:column; gap:10px; }
   .prods { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
   .photo { width:100%; aspect-ratio:4/3; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); font-size:13px; }
+  .pthumb { position:relative; width:52px; height:52px; flex:none; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); padding:0; min-height:0; }
+  .pthumb.empty { border:1.5px dashed var(--line); background-color:transparent; }
+  .pthumb.empty:hover { border-color:var(--accent); color:var(--accent); background:var(--soft); }
+  .pthumb .k { position:absolute; top:-6px; left:-6px; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--ink); color:var(--card); font-size:11px; font-weight:700; display:grid; place-items:center; }
   .thumb { width:44px; height:44px; flex:none; border-radius:9px; background:var(--fill) center/cover no-repeat; }
   .cur-photo { width:120px; height:120px; flex:none; border-radius:14px; background:var(--fill) center/cover no-repeat; }
   .pick { display:flex; gap:12px; align-items:center; }
@@ -227,6 +231,10 @@
   .clickrow:hover td { background:var(--fill); }
   .range { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
   .range label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted); }
+  .search-box { display:flex; align-items:center; gap:10px; min-height:44px; padding:0 14px; border-radius:12px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .search-box input { border:0; background:transparent; min-height:40px; padding:0; flex:1; min-width:0; box-shadow:none !important; }
+  .cl-head { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .avatar.lg { width:64px; height:64px; font-size:22px; }
   .err { padding:10px 12px; border-radius:10px; background:var(--red-bg); color:var(--red); font-size:14px; }
   .err:empty { display:none; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; max-width:min(560px,92vw); padding:12px 16px; border-radius:14px;
@@ -264,7 +272,8 @@
     <button class="nav" data-view="stats"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistiques</button>
     <button class="nav" data-view="lives"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lives passés</button>
     <button class="nav" data-view="regie"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie live</button>
-    <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Réservations<span class="count" id="navReview"></span></button>
+    <button class="nav" data-view="reservations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Commandes<span class="count" id="navReview"></span></button>
+    <button class="nav" data-view="clients"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg>Clients</button>
     <button class="nav" data-view="messenger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
     <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits et stock</button>
     <button class="nav" data-view="reglages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Connexion et tests</button>
@@ -313,7 +322,7 @@
       </div>
       <div class="kpis k8">
         <div class="card kpi"><span class="l">Chiffre d’affaires</span><span class="v" id="kRev">…</span><span class="h">ventes confirmées</span></div>
-        <div class="card kpi"><span class="l">En attente</span><span class="v" id="kPend">…</span><span class="h">réservé, pas encore confirmé</span></div>
+        <div class="card kpi"><span class="l">En attente</span><span class="v" id="kPend">…</span><span class="h">commandé, pas encore confirmé</span></div>
         <div class="card kpi"><span class="l">Commandes confirmées</span><span class="v" id="kOrd">…</span><span class="h" id="kItems"></span></div>
         <div class="card kpi"><span class="l">Clients</span><span class="v" id="kCust">…</span><span class="h" id="kBasket"></span></div>
       </div>
@@ -366,7 +375,7 @@
       <div class="card onb" id="onboard" hidden></div>
       <div class="kpis">
         <div class="card kpi"><span class="l">Commentaires</span><span class="v" id="kComments">0</span></div>
-        <div class="card kpi"><span class="l">Réservations</span><span class="v" id="kIntents">0</span></div>
+        <div class="card kpi"><span class="l">Commandes</span><span class="v" id="kIntents">0</span></div>
         <div class="card kpi"><span class="l">À valider</span><span class="v" id="kReview">0</span></div>
         <div class="card kpi"><span class="l">Confirmées</span><span class="v" id="kConfirmed">0</span></div>
       </div>
@@ -390,7 +399,7 @@
             <div class="row" style="margin:0">
               <input id="manualText" placeholder="JP01 2 M" style="flex:1 1 140px" aria-label="Commande">
               <input id="manualName" placeholder="Nom du client" style="flex:1 1 140px" aria-label="Nom du client">
-              <button class="primary" onclick="api('/api/intents/manual',{text:val('manualText'),name:val('manualName')}).then(()=>{q('#manualText').value='';toast('Réservation ajoutée')})">Ajouter</button>
+              <button class="primary" onclick="api('/api/intents/manual',{text:val('manualText'),name:val('manualName')}).then(()=>{q('#manualText').value='';toast('Commande ajoutée')})">Ajouter</button>
             </div>
           </div>
           <div class="card">
@@ -405,21 +414,34 @@
 
     </section>
 
-    <!-- ================= Réservations ================= -->
-    <section class="view" id="v-reservations" aria-label="Réservations">
-      <h1>Réservations</h1>
+    <!-- ================= Commandes ================= -->
+    <section class="view" id="v-reservations" aria-label="Commandes">
+      <h1>Commandes</h1>
       <div class="card">
         <div class="card-head">
           <div class="seg" role="group" aria-label="Filtrer" id="intentSeg">
             <button type="button" data-f="all" aria-pressed="true">Toutes</button>
             <button type="button" data-f="review" aria-pressed="false">À valider</button>
-            <button type="button" data-f="ok" aria-pressed="false">Réservées</button>
+            <button type="button" data-f="ok" aria-pressed="false">En attente / confirmées</button>
             <button type="button" data-f="closed" aria-pressed="false">Rejetées / annulées</button>
           </div>
-          <label class="check"><input type="checkbox" id="autoPR" onchange="api('/api/settings',{autoPrivateReply:this.checked})"> Message privé automatique après réservation</label>
+          <label class="check"><input type="checkbox" id="autoPR" onchange="api('/api/settings',{autoPrivateReply:this.checked})"> Message privé automatique après chaque commande</label>
         </div>
         <div id="intents" class="list" style="max-height:none"></div>
       </div>
+    </section>
+
+    <!-- ================= Clients ================= -->
+    <section class="view" id="v-clients" aria-label="Clients">
+      <div class="top"><div><h1>Clients</h1><div class="muted" style="font-size:15px;margin-top:4px" id="clCount"></div></div></div>
+      <div class="row" style="margin:0">
+        <label class="search-box" style="flex:1 1 260px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="sr">Rechercher un client</span><input type="search" id="clSearch" placeholder="Nom, téléphone ou ville" oninput="clDebounce()"></label>
+        <div class="seg" role="group" aria-label="Trier" id="clSort">
+          <button type="button" data-s="recent" aria-pressed="true">Récents</button><button type="button" data-s="spent" aria-pressed="false">Meilleurs</button><button type="button" data-s="orders" aria-pressed="false">Fidèles</button><button type="button" data-s="name" aria-pressed="false">A → Z</button>
+        </div>
+      </div>
+      <div class="card" style="padding:8px 20px"><div id="clList" class="table-wrap"><div class="empty">Chargement…</div></div></div>
+      <div id="clDetail" hidden></div>
     </section>
 
     <!-- ================= Messenger ================= -->
@@ -475,7 +497,7 @@
       </div>
       <div class="card">
         <h2 style="margin-bottom:10px">Autres écrans</h2>
-        <div class="row" style="margin:0"><button onclick="show('lives')">Lives passés</button><button onclick="show('messenger')">Messenger</button><button onclick="show('stats')">Statistiques</button></div>
+        <div class="row" style="margin:0"><button onclick="show('lives')">Lives passés</button><button onclick="show('clients')">Clients</button><button onclick="show('messenger')">Messenger</button><button onclick="show('stats')">Statistiques</button></div>
       </div>
       <div class="card">
         <div class="card-head" style="margin:0"><div><h2>Outils techniques</h2><span class="muted">Tests de l’API Meta et journal.</span></div><button onclick="show('reglages')">Ouvrir</button></div>
@@ -502,7 +524,7 @@
             <button class="sm" onclick="api('/api/report/parents').then(r=>toast(r.matched+'/'+r.plusReplies+' +1 reliés'))">Analyser les parents</button>
             <button class="sm" onclick="api('/api/report/parser').then(r=>toast(r.length+' commentaires analysés'))">Analyser le parseur</button>
             <button class="sm" onclick="api('/api/comments/reparse').then(r=>toast(r.created+' commande(s) retrouvée(s)'))">Réanalyser les commentaires</button>
-            <button class="sm danger" onclick="if(confirm('Effacer les commentaires et réservations SANS archiver ? Vos produits sont gardés.'))api('/api/reset-live')">Réinitialiser sans archiver</button>
+            <button class="sm danger" onclick="if(confirm('Effacer les commentaires et commandes SANS archiver ? Vos produits sont gardés.'))api('/api/reset-live')">Réinitialiser sans archiver</button>
           </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>#</th><th>Test</th><th>Résultat</th><th>Note</th><th class="hide-sm">Preuves</th><th></th></tr></thead><tbody id="tests"></tbody></table></div>
@@ -517,7 +539,7 @@
   <nav class="tabbar" aria-label="Menu">
     <button data-view="stats"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
     <button data-view="regie"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie</button>
-    <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Réservations<span id="tabReview"></span></span></button>
+    <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Commandes<span id="tabReview"></span></span></button>
     <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits</button>
     <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Plus</button>
   </nav>
@@ -554,7 +576,7 @@
 
 <script>
 const FR = {
-  RESERVED: 'Réservé', WAITLISTED: 'Liste d’attente', NEEDS_REVIEW: 'À valider', REJECTED: 'Rejeté', CONFIRMED: 'Confirmé', CANCELLED: 'Annulé',
+  RESERVED: 'En attente', WAITLISTED: 'Liste d’attente', NEEDS_REVIEW: 'À valider', REJECTED: 'Rejetée', CONFIRMED: 'Confirmée', CANCELLED: 'Annulée',
   SENT: 'Envoyé', FAILED: 'Échec',
   A_TESTER: 'À tester', OK: 'Validé', PARTIEL: 'Partiel', KO: 'Échec',
   AWAIT_CONFIRM: 'Attend la confirmation', ASK_NAME: 'Demande le nom', ASK_PHONE: 'Demande le téléphone', ASK_ADDRESS: 'Demande l’adresse',
@@ -583,6 +605,7 @@ function show(view) {
   try { localStorage.setItem('lc.view', view); } catch (e) {}
   if (view === 'stats') loadStats();
   if (view === 'lives') loadLives();
+  if (view === 'clients') loadClients();
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
@@ -756,7 +779,9 @@ function render() {
       <div class="muted">${published.length ? `<span class="pill OK">Publié</span> ${published.map((c) => `<code>${esc(c.commentId)}</code>`).join(' ')} — <b>pensez à l’épingler</b>` : 'Pas encore publié dans ce live.'}</div>`;
     q('#playlist').innerHTML = S.products.map((x, k) => {
       const dispo = stockOf(x.code).reduce((a, v) => a + v.available, 0);
-      return `<div class="pl"><span class="n">${k + 1}</span>${x.photo ? `<span class="thumb" style="background-image:url('${esc(x.photo)}')"></span>` : ''}<span class="code">${esc(x.code)}</span><span class="t">${esc(x.name)}<br><span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}</span></span>
+      return `<div class="pl">${x.photo
+        ? `<span class="pthumb" style="background-image:url('${esc(x.photo)}')" role="img" aria-label="${esc(x.name)}"><span class="k">${k + 1}</span></span>`
+        : `<button type="button" class="pthumb empty" onclick="openProduct('${esc(x.code)}')" title="Ajouter une photo" aria-label="Ajouter une photo à ${esc(x.code)}"><span class="k">${k + 1}</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg></button>`}<span class="code">${esc(x.code)}</span><span class="t">${esc(x.name)}<br><span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}</span></span>
         ${k === i ? '<span class="pill AWAIT_CONFIRM">En cours</span>' : `<button class="sm" onclick="setCurrent(${k})">Présenter</button>`}</div>`;
     }).join('');
   } else {
@@ -787,7 +812,7 @@ function render() {
         ${i.commentId && i.code && !i.privateReply ? `<button class="primary sm" onclick="api('/api/intents/${i.id}/private-reply').then(()=>toast('Message privé envoyé'))">Envoyer le message privé</button>` : ''}
         ${!['REJECTED', 'CANCELLED'].includes(i.status) ? `<button class="sm" onclick="api('/api/intents/${i.id}/resolve',{action:'reject'})">Rejeter</button>` : ''}
         ${i.privateReply?.status === 'SENT' ? `<button class="sm" onclick="api('/api/comments/${i.commentId}/second-reply').then(r=>toast(r.accepted?'2e message ACCEPTÉ (inattendu)':'2e message refusé (attendu)'))">Tester un 2e message</button>` : ''}
-      </div></div>`).join('') || '<div class="empty">Aucune réservation dans ce filtre.</div>';
+      </div></div>`).join('') || '<div class="empty">Aucune commande dans ce filtre.</div>';
 
   // Messenger
   q('#convs').innerHTML = S.conversations.map((c) => `<div class="item">
@@ -1044,7 +1069,7 @@ function livePeriod(l) {
 }
 function livesTable(list, emptyText) {
   if (!list.length) return `<div class="empty">${emptyText}</div>`;
-  return `<table><thead><tr><th>Live</th><th class="hide-sm">Commentaires</th><th>Réservations</th><th>Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
+  return `<table><thead><tr><th>Live</th><th class="hide-sm">Commentaires</th><th>Commandes</th><th>Confirmées</th><th class="hide-sm">Clients</th><th>Chiffre d’affaires</th></tr></thead><tbody>` +
     list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><b style="color:var(--ink)">${esc(l.name)}</b> ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}<br><span class="muted">${livePeriod(l)}</span></td>
       <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td>${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
 }
@@ -1058,7 +1083,7 @@ async function loadStats() {
   q('#kRev').textContent = mga(t.revenueMga); q('#kPend').textContent = mga(t.pendingMga);
   q('#kOrd').textContent = t.orders; q('#kItems').textContent = `${t.itemsSold} article${t.itemsSold > 1 ? 's' : ''} vendu${t.itemsSold > 1 ? 's' : ''}`;
   q('#kCust').textContent = t.customers; q('#kBasket').textContent = t.customers ? `panier moyen ${mga(t.averageBasketMga)}` : '';
-  q('#kRate').textContent = t.confirmationRate != null ? `${t.confirmationRate} % des réservations confirmées` : '';
+  q('#kRate').textContent = t.confirmationRate != null ? `${t.confirmationRate} % des commandes confirmées` : '';
   const hourMode = d.series.unit === 'hour', monthMode = d.series.unit === 'month';
   q('#stSeriesTitle').textContent = hourMode ? 'Chiffre d’affaires par heure' : monthMode ? 'Chiffre d’affaires par mois' : 'Chiffre d’affaires par jour';
   const pts = d.series.points.map((p) => {
@@ -1087,7 +1112,7 @@ async function openLive(id) {
       <div class="row" style="margin:0">${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.id)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
     <div class="kpis" style="margin-bottom:16px">
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : ''}</span></div>
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Confirmées</span><span class="v">${l.confirmed}</span><span class="h">sur ${l.reservations} réservations</span></div>
+      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Confirmées</span><span class="v">${l.confirmed}</span><span class="h">sur ${l.reservations} commandes</span></div>
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Articles vendus</span><span class="v">${l.itemsSold}</span><span class="h">${l.customers} client${l.customers > 1 ? 's' : ''}</span></div>
       <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commentaires</span><span class="v">${l.comments}</span><span class="h">${l.cancelled} annulée${l.cancelled > 1 ? 's' : ''}</span></div>
     </div>
@@ -1095,8 +1120,51 @@ async function openLive(id) {
       <div><h2 style="margin-bottom:6px">Produits vendus</h2>${d.products.length ? d.products.map((p) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span><span class="muted">× ${p.quantity} · </span><b>${mga(p.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucune vente confirmée.</div>'}</div>
       <div><h2 style="margin-bottom:6px">Clients</h2>${d.customers.length ? d.customers.map((c) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><b>${esc(c.name)}</b><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucun client confirmé.</div>'}</div>
     </div>
-    <h2 style="margin:18px 0 6px">Toutes les réservations</h2>
-    <div class="table-wrap"><table><thead><tr><th>Heure</th><th>Client</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${d.sales.map((x) => `<tr><td>${new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.customer)}</td><td><span class="code">${esc(x.code)}</span> × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</td><td><span class="pill ${x.status}">${fr(x.status)}</span></td><td>${mga(x.amount)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Aucune réservation.</td></tr>'}</tbody></table></div>`;
+    <h2 style="margin:18px 0 6px">Toutes les commandes</h2>
+    <div class="table-wrap"><table><thead><tr><th>Heure</th><th>Client</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${d.sales.map((x) => `<tr><td>${new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.customer)}</td><td><span class="code">${esc(x.code)}</span> × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</td><td><span class="pill ${x.status}">${fr(x.status)}</span></td><td>${mga(x.amount)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Aucune commande.</td></tr>'}</tbody></table></div>`;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------- Clients
+var clSortKey = 'recent', clTimer;
+function clDebounce() { clearTimeout(clTimer); clTimer = setTimeout(loadClients, 250); }
+document.querySelectorAll('#clSort button').forEach((b) => b.addEventListener('click', () => {
+  clSortKey = b.dataset.s;
+  document.querySelectorAll('#clSort button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  loadClients();
+}));
+async function loadClients() {
+  const list = await get(`/api/customers?sort=${clSortKey}&q=${encodeURIComponent(q('#clSearch').value)}`);
+  q('#clCount').textContent = `${list.length} client${list.length > 1 ? 's' : ''}${q('#clSearch').value ? ' trouvé' + (list.length > 1 ? 's' : '') : ' dans votre fichier'}`;
+  q('#clList').innerHTML = list.length ? `<table><thead><tr><th>Client</th><th class="hide-sm">Ville</th><th>Commandes</th><th>Total acheté</th><th class="hide-sm">Dernière commande</th></tr></thead><tbody>${list.map((c) => `
+    <tr class="clickrow" onclick="openClient('${esc(encodeURIComponent(c.key))}')"><td><div class="row" style="margin:0;flex-wrap:nowrap"><span class="avatar">${esc(initials(c.name))}</span><span><b style="color:var(--ink)">${esc(c.name)}</b>${c.cancelled >= 2 ? ' <span class="pill PARTIEL">' + c.cancelled + ' annulations</span>' : ''}<br><span class="muted">${esc(c.phone || (c.messenger ? 'Messenger' : 'pas de téléphone'))}</span></span></div></td>
+      <td class="hide-sm">${esc(c.city || '—')}</td><td>${c.confirmed}${c.orders > c.confirmed ? ` <span class="muted">/ ${c.orders}</span>` : ''}</td><td><b style="color:var(--ink)">${mga(c.revenueMga)}</b>${c.pendingMga ? `<br><span class="muted">+ ${mga(c.pendingMga)} en attente</span>` : ''}</td><td class="hide-sm">${ago(c.lastOrderAt)}</td></tr>`).join('')}</tbody></table>`
+    : `<div class="empty">${q('#clSearch').value ? 'Aucun client trouvé.' : 'Vos clients apparaîtront ici dès leurs premières commandes.'}</div>`;
+}
+async function openClient(key) {
+  const c = await get(`/api/customers/${key}`);
+  const el = q('#clDetail'); el.hidden = false;
+  el.innerHTML = `<div class="card">
+      <div class="card-head"><div class="cl-head"><span class="avatar lg">${esc(initials(c.name))}</span><div><h2 style="font-size:22px">${esc(c.name)}</h2><span class="muted">Client depuis ${dt(c.firstOrderAt, false)} · ${c.lives} live${c.lives > 1 ? 's' : ''}${c.messenger ? ' · joignable sur Messenger' : ''}</span></div></div>
+        <div class="row" style="margin:0">${c.phone ? `<a class="btn" href="tel:${esc(c.phone)}">Appeler</a>` : ''}<button class="sm" onclick="q('#clDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
+      <div class="kpis" style="margin-bottom:16px">
+        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Total acheté</span><span class="v">${mga(c.revenueMga)}</span><span class="h">${c.confirmed} commande${c.confirmed > 1 ? 's' : ''} confirmée${c.confirmed > 1 ? 's' : ''}</span></div>
+        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Panier moyen</span><span class="v">${mga(c.averageBasketMga)}</span><span class="h">${c.itemsBought} article${c.itemsBought > 1 ? 's' : ''}</span></div>
+        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">En attente</span><span class="v">${mga(c.pendingMga)}</span><span class="h">pas encore confirmé</span></div>
+        <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Annulations</span><span class="v">${c.cancelled}</span><span class="h">${c.cancelled >= 2 ? 'à surveiller' : 'client fiable'}</span></div>
+      </div>
+      <div class="grid cols-2">
+        <div><h2 style="margin-bottom:8px">Coordonnées</h2>
+          <div style="display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;font-size:14px">
+            <span class="muted">Téléphone</span><span>${esc(c.phone || '—')}</span>
+            <span class="muted">Adresse</span><span>${esc([c.address, c.city].filter(Boolean).join(', ') || '—')}</span>
+            <span class="muted">Paiement</span><span>${esc(fr(c.payment) || '—')}</span>
+          </div></div>
+        <div><h2 style="margin-bottom:6px">Ce qu’il achète</h2>${c.favoriteProducts.length ? c.favoriteProducts.map((p) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span class="muted">× ${p.quantity}</span></div>`).join('') : '<span class="muted">Rien de confirmé pour l’instant.</span>'}</div>
+      </div>
+      <h2 style="margin:18px 0 6px">Historique des commandes</h2>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th class="hide-sm">Live</th><th>Produit</th><th>Statut</th><th>Montant</th></tr></thead><tbody>${c.history.map((h) => `<tr><td>${dt(h.at)}</td><td class="hide-sm">${esc(h.live)}${h.current ? ' <span class="pill live-on">EN COURS</span>' : ''}</td><td><span class="code">${esc(h.code)}</span> ${esc(h.name)} × ${h.quantity}${h.variant ? ' · ' + esc(h.variant) : ''}</td><td><span class="pill ${h.status}">${fr(h.status)}</span></td><td>${mga(h.amount)}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1128,7 +1196,7 @@ async function logout() {
   location.href = '/connexion';
 }
 async function disconnectFacebook() {
-  if (!confirm('Déconnecter Facebook pour cette boutique ? Vos produits, réservations et sessions sont gardés. Il faudra reconnecter Facebook avant le prochain live.')) return;
+  if (!confirm('Déconnecter Facebook pour cette boutique ? Vos produits, commandes et lives sont gardés. Il faudra reconnecter Facebook avant le prochain live.')) return;
   await api('/api/facebook/disconnect'); toast('Facebook déconnecté');
 }
 function renderFacebook() {

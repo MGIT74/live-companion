@@ -121,7 +121,7 @@ export function resolveIntent(id: string, action: 'accept' | 'reject' | 'confirm
     releaseIntent(intent);
     intent.status = 'REJECTED';
   } else if (action === 'confirm') {
-    if (intent.status !== 'RESERVED') throw new Error('Seule une réservation peut être confirmée');
+    if (intent.status !== 'RESERVED') throw new Error('Seule une commande en attente peut être confirmée');
     confirmIntent(intent);
   } else {
     if (intent.status === 'RESERVED') return intent;

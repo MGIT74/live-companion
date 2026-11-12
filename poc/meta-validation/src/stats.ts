@@ -219,3 +219,83 @@ export async function periodStats(from: Date, to: Date, tzOffsetMin: number) {
     lives,
   };
 }
+
+// ---------------------------------------------------------------- Clients
+/**
+ * Fichier clients de la boutique, construit à partir de toutes les commandes (lives archivés + live en cours).
+ * Un client = un nom Facebook (même personne d'un live à l'autre) ; coordonnées reprises de Messenger.
+ */
+interface CustomerRow {
+  key: string; name: string; phone?: string; address?: string; city?: string; payment?: string; messenger: boolean;
+  orders: number; confirmed: number; cancelled: number; revenueMga: number; pendingMga: number; itemsBought: number;
+  firstOrderAt?: string; lastOrderAt?: string; lives: number;
+}
+interface HistoryRow { at: string; live: string; current: boolean; code: string; name: string; variant?: string; quantity: number; status: Intent['status']; amount: number }
+
+async function customerIndex() {
+  const snaps: [Snapshot, boolean][] = [[currentSnapshot(), true], ...(await archived()).map((s) => [s, false] as [Snapshot, boolean])];
+  const map = new Map<string, CustomerRow & { history: HistoryRow[]; liveIds: Set<string>; products: Map<string, { code: string; name: string; quantity: number }> }>();
+  for (const [s, current] of snaps) {
+    const price = new Map(s.products.map((p) => [p.code, p]));
+    for (const i of s.intents) {
+      if (!i.code || !['RESERVED', 'CONFIRMED', 'CANCELLED'].includes(i.status)) continue;
+      const conv = Object.values(s.conversations).find((c) => c.intentIds.includes(i.id));
+      const name = (conv?.customer.name || i.authorName || 'Client').trim();
+      const key = name.toLowerCase();
+      let c = map.get(key);
+      if (!c) {
+        c = { key, name, messenger: false, orders: 0, confirmed: 0, cancelled: 0, revenueMga: 0, pendingMga: 0, itemsBought: 0, lives: 0, history: [], liveIds: new Set(), products: new Map() };
+        map.set(key, c);
+      }
+      const p = price.get(i.code);
+      const amount = (i.unitPriceMga ?? p?.priceMga ?? 0) * i.quantity;
+      // Coordonnées : les plus récentes l'emportent.
+      if (conv) {
+        c.messenger = true;
+        if (!c.lastOrderAt || i.createdAt >= c.lastOrderAt) {
+          c.phone = conv.customer.phone || c.phone; c.address = conv.customer.address || c.address;
+          c.city = conv.customer.city || c.city; c.payment = conv.customer.payment || c.payment;
+        }
+      }
+      c.orders++;
+      if (i.status === 'CONFIRMED') {
+        c.confirmed++; c.revenueMga += amount; c.itemsBought += i.quantity;
+        const fav = c.products.get(i.code) ?? { code: i.code, name: p?.name ?? i.code, quantity: 0 };
+        fav.quantity += i.quantity; c.products.set(i.code, fav);
+      } else if (i.status === 'RESERVED') c.pendingMga += amount;
+      else c.cancelled++;
+      if (!c.firstOrderAt || i.createdAt < c.firstOrderAt) c.firstOrderAt = i.createdAt;
+      if (!c.lastOrderAt || i.createdAt > c.lastOrderAt) c.lastOrderAt = i.createdAt;
+      c.liveIds.add(s.summary.id);
+      c.history.push({ at: i.createdAt, live: s.summary.name, current, code: i.code, name: p?.name ?? i.code, variant: i.variant, quantity: i.quantity, status: i.status, amount });
+    }
+  }
+  for (const c of map.values()) c.lives = c.liveIds.size;
+  return map;
+}
+
+export async function listCustomers(search?: string, sort = 'recent') {
+  const term = (search ?? '').trim().toLowerCase();
+  const rows = [...(await customerIndex()).values()]
+    .filter((c) => !term || c.name.toLowerCase().includes(term) || (c.phone ?? '').includes(term.replace(/\s/g, '')) || (c.city ?? '').toLowerCase().includes(term))
+    .map(({ history, liveIds, products, ...c }) => c);
+  const by: Record<string, (a: CustomerRow, b: CustomerRow) => number> = {
+    recent: (a, b) => (b.lastOrderAt ?? '').localeCompare(a.lastOrderAt ?? ''),
+    spent: (a, b) => b.revenueMga - a.revenueMga,
+    orders: (a, b) => b.confirmed - a.confirmed || b.orders - a.orders,
+    name: (a, b) => a.name.localeCompare(b.name, 'fr'),
+  };
+  return rows.sort(by[sort] ?? by.recent);
+}
+
+export async function customerDetail(key: string) {
+  const c = (await customerIndex()).get(key.toLowerCase());
+  if (!c) throw new Error('Client introuvable');
+  const { history, liveIds, products, ...rest } = c;
+  return {
+    ...rest,
+    averageBasketMga: c.confirmed ? Math.round(c.revenueMga / c.confirmed) : 0,
+    favoriteProducts: [...products.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 5),
+    history: history.sort((a, b) => b.at.localeCompare(a.at)),
+  };
+}

@@ -15,7 +15,7 @@ import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { allShopIds, archiveSession, currentShopId, flushAll, listSessions, loadShops, persist, recordTest, resetLiveData, runInShop, sessionSnapshot, shopForPage, state, TESTS, type TestStatus } from './store.ts';
 import { changePassword, clearSession, login, requireAccount, signup, updateProfile, usersCount } from './accounts.ts';
 import { migrate } from './db.ts';
-import { liveDetail, livesHistory, periodStats } from './stats.ts';
+import { customerDetail, listCustomers, liveDetail, livesHistory, periodStats } from './stats.ts';
 
 const app = express();
 app.set('trust proxy', true);
@@ -227,6 +227,8 @@ app.get('/api/stats', wrap((req) => {
   return periodStats(from, to, Number(req.query.tz ?? 0) || 0);
 }));
 app.get('/api/lives/history', wrap(() => livesHistory()));
+app.get('/api/customers', wrap((req) => listCustomers(String(req.query.q ?? ''), String(req.query.sort ?? 'recent'))));
+app.get('/api/customers/:key', wrap((req) => customerDetail(req.params.key)));
 app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));
 
 // Mon compte

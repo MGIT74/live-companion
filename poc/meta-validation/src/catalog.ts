@@ -48,16 +48,16 @@ export function saveProduct(input: ProductInput): Product {
 
   if (original) {
     const used = state.intents.some((i) => i.code === original.code && ['RESERVED', 'CONFIRMED', 'NEEDS_REVIEW', 'WAITLISTED'].includes(i.status));
-    if (original.code !== p.code && used) throw new Error('Ce produit a des réservations en cours : son code ne peut pas changer pendant le live');
+    if (original.code !== p.code && used) throw new Error('Ce produit a des commandes en cours : son code ne peut pas changer pendant le live');
     const variants = p.variants.map((v) => {
       const prev = original.variants.find((x) => x.label.toUpperCase() === v.label.toUpperCase());
       const reserved = prev?.reserved ?? 0;
-      if (v.stock < reserved) throw new Error(`${v.label} : ${reserved} déjà réservé(s), le stock ne peut pas être inférieur`);
+      if (v.stock < reserved) throw new Error(`${v.label} : ${reserved} déjà commandé(s), le stock ne peut pas être inférieur`);
       return { label: v.label, stock: v.stock, reserved };
     });
     for (const prev of original.variants) {
       if (prev.reserved > 0 && !variants.some((v) => v.label.toUpperCase() === prev.label.toUpperCase())) {
-        throw new Error(`${prev.label} a des réservations : impossible de la supprimer`);
+        throw new Error(`${prev.label} a des commandes en cours : impossible de la supprimer`);
       }
     }
     Object.assign(original, { code: p.code, name: p.name, priceMga: p.priceMga, variants });
@@ -76,7 +76,7 @@ export function saveProduct(input: ProductInput): Product {
 export function deleteProduct(code: string) {
   const idx = state.products.findIndex((x) => x.code === code);
   if (idx < 0) throw new Error('Produit introuvable');
-  if (state.products[idx].variants.some((v) => v.reserved > 0)) throw new Error('Ce produit a des réservations : rejetez-les avant de le supprimer');
+  if (state.products[idx].variants.some((v) => v.reserved > 0)) throw new Error('Ce produit a des commandes en cours : rejetez-les ou annulez-les avant de le supprimer');
   removePhotoFile(state.products[idx].photo);
   state.products.splice(idx, 1);
   persist();

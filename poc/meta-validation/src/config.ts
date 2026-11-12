@@ -25,6 +25,8 @@ export const config = {
   dashboardPassword: required('DASHBOARD_PASSWORD'),
   databaseUrl: required('DATABASE_URL'),
   allowSignup: process.env.ALLOW_SIGNUP !== 'false',
+  /** E-mails des super admins (séparés par des virgules). Sinon : le premier compte créé. */
+  superAdminEmails: (process.env.SUPER_ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
   dataDir: path.join(root, 'data'),
   photosDir: path.join(root, 'data', 'photos'),
   evidenceDir: path.join(root, 'evidence'),

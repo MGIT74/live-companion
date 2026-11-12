@@ -3,13 +3,14 @@ import type { NextFunction, Request, Response } from 'express';
 import { config } from './config.ts';
 import { q } from './db.ts';
 import { log } from './bus.ts';
+import { isLocked, reloadAccess } from './platform.ts';
 import { createShopState, importLegacySessions, legacyState, newState, retireLegacyState, runInShop } from './store.ts';
 
 /**
  * Comptes vendeurs : e-mail + mot de passe, une boutique par compte (le propriétaire),
  * connexion gardée dans un cookie signé (30 jours).
  */
-export interface Account { id: string; email: string; fullName: string; shopId: string; shopName: string; role: string }
+export interface Account { id: string; email: string; fullName: string; shopId: string; shopName: string; role: string; isAdmin: boolean; ownShopId: string; impersonating?: boolean }
 
 const COOKIE = 'lc_session';
 const MAX_AGE_S = 30 * 24 * 3600;
@@ -54,19 +55,20 @@ function verify(token: string | undefined): string | undefined {
 }
 function setSession(res: Response, userId: string) {
   const secure = config.baseUrl.startsWith('https://') ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${COOKIE}=${encodeURIComponent(sign(userId, Math.floor(Date.now() / 1000)))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_S}${secure}`);
+  res.append('Set-Cookie', `${COOKIE}=${encodeURIComponent(sign(userId, Math.floor(Date.now() / 1000)))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_S}${secure}`);
 }
 export function clearSession(res: Response) {
-  res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  res.append('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  res.append('Set-Cookie', 'lc_as=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
 }
 
 export async function loadAccount(userId: string): Promise<Account | undefined> {
-  const rows = await q<{ id: string; email: string; full_name: string; shop_id: string; shop_name: string; role: string }>(
-    `SELECT u.id, u.email, u.full_name, m.shop_id, s.name AS shop_name, m.role
+  const rows = await q<{ id: string; email: string; full_name: string; shop_id: string; shop_name: string; role: string; is_admin: number }>(
+    `SELECT u.id, u.email, u.full_name, u.is_admin, m.shop_id, s.name AS shop_name, m.role
        FROM users u JOIN shop_members m ON m.user_id = u.id JOIN shops s ON s.id = m.shop_id
       WHERE u.id = ? ORDER BY m.created_at LIMIT 1`, [userId]);
   const r = rows[0];
-  return r && { id: r.id, email: r.email, fullName: r.full_name, shopId: r.shop_id, shopName: r.shop_name, role: r.role };
+  return r && { id: r.id, email: r.email, fullName: r.full_name, shopId: r.shop_id, shopName: r.shop_name, role: r.role, isAdmin: Boolean(r.is_admin), ownShopId: r.shop_id };
 }
 
 declare global {
@@ -83,9 +85,40 @@ export function requireAccount(opts: { page?: boolean } = {}) {
       if (opts.page) return res.redirect('/connexion');
       return res.status(401).json({ error: 'Session expirée : reconnectez-vous.', login: true });
     }
+    // Super admin qui regarde l'espace d'un vendeur (« Voir son espace »)
+    const as = account.isAdmin ? verifyAs(readCookie(req, AS_COOKIE), account.id) : undefined;
+    if (as && as !== account.shopId) {
+      const [s] = await q<{ name: string }>('SELECT name FROM shops WHERE id = ?', [as]).catch(() => []);
+      if (s) { account.shopId = as; account.shopName = s.name; account.impersonating = true; account.role = 'OWNER'; }
+    }
     req.account = account;
     runInShop(account.shopId, () => next());
   };
+}
+
+/** Bloque l'application tant que le compte n'est pas payé (sauf profil, statut et déconnexion). */
+const OPEN_WHEN_LOCKED = new Set(['/api/me', '/api/access', '/events']);
+export function requireActive(req: Request, res: Response, next: NextFunction) {
+  const a = req.account;
+  if (!a || a.isAdmin || !isLocked(a.shopId) || OPEN_WHEN_LOCKED.has(req.baseUrl + req.path) || OPEN_WHEN_LOCKED.has(req.originalUrl.split('?')[0])) return next();
+  res.status(423).json({ error: 'Compte non activé', locked: true });
+}
+
+// ---------------------------------------------------------------- « Voir son espace » (super admin)
+const AS_COOKIE = 'lc_as';
+function verifyAs(token: string | undefined, adminId: string) {
+  if (!token) return undefined;
+  const [shopId, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', sessionKey()).update(`as.${adminId}.${shopId}`).digest('base64url');
+  return sig && sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)) ? shopId : undefined;
+}
+export function startImpersonation(res: Response, adminId: string, shopId: string) {
+  const sig = crypto.createHmac('sha256', sessionKey()).update(`as.${adminId}.${shopId}`).digest('base64url');
+  const secure = config.baseUrl.startsWith('https://') ? '; Secure' : '';
+  res.append('Set-Cookie', `${AS_COOKIE}=${shopId}.${sig}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${8 * 3600}${secure}`);
+}
+export function stopImpersonation(res: Response) {
+  res.append('Set-Cookie', `${AS_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
 export async function usersCount() {
@@ -119,10 +152,13 @@ export async function signup(res: Response, body: { fullName?: string; email?: s
   const userId = newId();
   const shopId = newId();
   const legacy = first ? legacyState() : undefined;
-  await q('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)', [userId, email, hashPassword(password), fullName.slice(0, 120)]);
-  await q('INSERT INTO shops (id, name) VALUES (?, ?)', [shopId, shopName.slice(0, 120)]);
+  await q('INSERT INTO users (id, email, password_hash, full_name, is_admin) VALUES (?, ?, ?, ?, ?)', [userId, email, hashPassword(password), fullName.slice(0, 120), first ? 1 : 0]);
+  // Le tout premier compte (propriétaire de la plateforme) est actif et super admin ; les autres attendent leur paiement.
+  await q('INSERT INTO shops (id, name, status) VALUES (?, ?, ?)', [shopId, shopName.slice(0, 120), first ? 'active' : 'pending']);
   await q('INSERT INTO shop_members (shop_id, user_id, role) VALUES (?, ?, ?)', [shopId, userId, 'OWNER']);
   await createShopState(shopId, legacy ?? newState());
+  await reloadAccess(shopId);
+  runInShop(shopId, () => log('info', `Compte créé : ${fullName} (${email})`));
   if (legacy) {
     const n = await importLegacySessions(shopId);
     retireLegacyState();
@@ -132,7 +168,7 @@ export async function signup(res: Response, body: { fullName?: string; email?: s
   return loadAccount(userId);
 }
 
-export async function login(res: Response, body: { email?: string; password?: string }) {
+export async function login(res: Response, body: { email?: string; password?: string }, req?: Request) {
   const email = String(body.email ?? '').trim().toLowerCase();
   const rows = await q<{ id: string; password_hash: string }>('SELECT id, password_hash FROM users WHERE email = ?', [email]);
   const u = rows[0];
@@ -141,7 +177,17 @@ export async function login(res: Response, body: { email?: string; password?: st
     throw new Error('E-mail ou mot de passe incorrect');
   }
   setSession(res, u.id);
-  return loadAccount(u.id);
+  stopImpersonation(res);
+  await q('UPDATE users SET last_login_at = NOW() WHERE id = ?', [u.id]);
+  const account = await loadAccount(u.id);
+  if (account) runInShop(account.shopId, () => log('info', `Connexion de ${account.fullName}${req ? ' · ' + describeClient(req) : ''}`));
+  return account;
+}
+function describeClient(req: Request) {
+  const ua = String(req.header('user-agent') ?? '');
+  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'navigateur';
+  const device = /Mobi|Android|iPhone/i.test(ua) ? 'téléphone' : 'ordinateur';
+  return `${browser} sur ${device}`;
 }
 
 // ---------------------------------------------------------------- Profil

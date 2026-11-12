@@ -1,3 +1,4 @@
+import { isLocked } from './platform.ts';
 import type { Request, Response } from 'express';
 import { config } from './config.ts';
 import { verifyMetaSignature } from './crypto.ts';
@@ -38,6 +39,7 @@ export function receiveWebhook(req: Request, res: Response) {
     // entry.id = la Page concernée → on traite l'événement dans la boutique qui l'a reliée.
     const shopId = shopForPage(String(entry.id ?? ''));
     if (!shopId) { log('warn', `Webhook ignoré : Page ${entry.id} reliée à aucune boutique.`); continue; }
+    if (isLocked(shopId)) continue; // compte non activé ou suspendu
     runInShop(shopId, () => handleEntry(entry));
   }
 }

@@ -1,3 +1,4 @@
+import { isLocked } from './platform.ts';
 import { emit, log } from './bus.ts';
 import { graph, selectedPage } from './graph.ts';
 import { ingestionStatus, pollOnce, startPolling, startSse, stopPolling, stopSse } from './ingestion.ts';
@@ -109,6 +110,7 @@ export function startWatcher() {
   started = true;
   setInterval(() => {
     for (const id of allShopIds()) {
+      if (isLocked(id)) continue; // compte non payé ou suspendu : rien n'est lu
       runInShop(id, () => tickShop(id).catch((e) => log('warn', `Surveillance des lives : ${e.message}`)));
     }
   }, TICK_MS).unref();

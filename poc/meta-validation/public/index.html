@@ -58,6 +58,41 @@
   .tabbar .count { position:absolute; top:2px; left:calc(50% + 6px); font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; padding:0 5px; border-radius:999px; background:var(--red); color:#fff; text-align:center; }
   .tabbar .count:empty { display:none; }
 
+  /* ---------- Compte à activer / suspendu (mobile d'abord) */
+  body.locked .shell, body.locked .tabbar { filter:blur(8px); opacity:.55; pointer-events:none; user-select:none; }
+  body.locked { overflow:hidden; }
+  .lock { position:fixed; inset:0; z-index:80; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.28); }
+  .lock-card { width:100%; max-height:94dvh; overflow-y:auto; background:var(--card); color:var(--ink); border-radius:24px 24px 0 0; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:16px; box-shadow:0 -10px 40px rgba(0,0,0,.25); }
+  .lock-ico { width:60px; height:60px; border-radius:18px; display:grid; place-items:center; background:var(--soft); color:var(--accent); margin:0 auto; }
+  .lock-ico.red { background:var(--red-bg); color:var(--red); }
+  .lock-card h2 { font-size:22px; text-align:center; letter-spacing:-.02em; }
+  .lock-card .lead { text-align:center; color:var(--muted); font-size:15px; margin:-6px 0 0; }
+  .lock-price { align-self:center; text-align:center; font-size:13px; font-weight:600; padding:4px 12px; border-radius:999px; border:1px solid var(--sep); }
+  .wallets { border:1px solid var(--sep); border-radius:16px; overflow:hidden; }
+  .wallet { display:flex; align-items:center; gap:12px; padding:12px 14px; }
+  .wallet + .wallet { border-top:1px solid var(--sep); }
+  .wallet .num { margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mm { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color:#fff; font-size:11px; font-weight:800; flex:none; }
+  .mm.MVola { background:#F2B600; color:#1d1d1f; } .mm.Orange { background:#FF7900; } .mm.Airtel { background:#E40000; } .mm.Offert { background:var(--fill2); color:var(--ink); }
+  .wallet button { min-height:36px; width:36px; padding:0; display:grid; place-items:center; flex:none; }
+  .paysteps { margin:0; padding-left:22px; list-style:decimal; font-size:14px; line-height:1.5; }
+  .paysteps li + li { margin-top:4px; }
+  .lock-acts { display:flex; gap:8px; }
+  .lock-acts .primary { flex:1; min-height:48px; justify-content:center; }
+  .lock-acts .btn:not(.primary) { min-height:48px; width:48px; padding:0; display:grid; place-items:center; flex:none; }
+  .lock-foot { text-align:center; font-size:13px; color:var(--muted); }
+  .lock-note { padding:12px 14px; border-radius:12px; background:var(--red-bg); color:var(--red); font-size:14px; }
+  .topnote { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; border-radius:12px; font-size:14px; font-weight:500; }
+  .topnote.warn { background:var(--orange-bg); color:var(--orange); }
+  .topnote.asview { background:var(--ink); color:var(--bg); }
+  .topnote button { margin-left:auto; min-height:34px; }
+  @media (min-width: 700px) {
+    .lock { align-items:center; padding:24px; }
+    .lock-card { width:560px; border-radius:22px; padding:26px; box-shadow:0 30px 80px rgba(0,0,0,.3); }
+    .lock-acts .btn:not(.primary) { width:auto; padding:0 16px; display:inline-flex; gap:8px; align-items:center; }
+  }
+  @media (max-width: 699px) { .lock-acts .btn:not(.primary) .lbl { display:none; } }
+
   /* ---------- Détail d'une vente en ligne */
   .vd-back { background:none; border:0; padding:0; color:var(--accent); font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:4px; min-height:32px; }
   .vd-head { display:flex; align-items:center; gap:18px; }
@@ -369,6 +404,7 @@
     <button class="nav" data-view="messenger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>Messenger</button>
     <button class="nav" data-view="stock"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits et stock</button>
     <button class="nav" data-view="reglages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Connexion et tests</button>
+    <a class="nav" id="navAdmin" href="/admin" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/></svg>Super admin</a>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Apparence" id="themeSeg" style="width:100%">
       <button type="button" data-theme="auto" style="flex:1">Auto</button><button type="button" data-theme="light" style="flex:1">Clair</button><button type="button" data-theme="dark" style="flex:1">Sombre</button>
@@ -377,6 +413,7 @@
   </nav>
 
   <main class="main">
+    <div id="topNotes" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="top">
       <div class="row" style="margin:0">
         <span id="live" class="pill">Aucun live</span>
@@ -565,7 +602,7 @@
 
     <!-- ================= Mon compte ================= -->
     <section class="view" id="v-compte" aria-label="Mon compte">
-      <div class="top"><h1>Mon compte</h1><button class="danger" onclick="logout()">Se déconnecter</button></div>
+      <div class="top"><h1>Mon compte</h1><div class="row" style="margin:0"><a class="btn" id="adminLink2" href="/admin" hidden>Super admin</a><button class="danger" onclick="logout()">Se déconnecter</button></div></div>
       <div class="card">
         <div class="row" style="margin:0 0 16px;gap:14px"><span class="avatar" id="meAvatar2" style="width:56px;height:56px;font-size:20px">?</span><div><b id="meName2" style="font-size:18px">…</b><br><span class="muted" id="meRole"></span></div></div>
         <form class="stack" style="gap:12px" onsubmit="event.preventDefault(); saveProfile()">
@@ -642,6 +679,7 @@
     <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Plus</button>
   </nav>
 </div>
+<div class="lock" id="lockScreen" hidden role="dialog" aria-modal="true" aria-labelledby="lockTitle"><div class="lock-card" id="lockCard"></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <dialog id="askDlg" class="ask" aria-labelledby="askTitle">
   <form method="dialog" id="askForm">
@@ -747,12 +785,13 @@ function logLine(t) { const el = q('#log'); el.textContent = `${new Date().toLoc
 async function api(path, body) {
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
   if (res.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); }
+  if (res.status === 423) { checkAccess(); throw new Error('Compte non activé'); }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) { toast(json.error + (json.meta ? ' — ' + JSON.stringify(json.meta.error ?? json.meta) : ''), true); throw new Error(json.error); }
   refresh();
   return json;
 }
-async function get(path) { const r = await fetch(path); if (r.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); } const j = await r.json(); if (!r.ok) { toast(j.error, true); throw new Error(j.error); } return j; }
+async function get(path) { const r = await fetch(path); if (r.status === 401) { location.href = '/connexion'; throw new Error('Session expirée'); } if (r.status === 423) { checkAccess(); throw new Error('Compte non activé'); } const j = await r.json(); if (!r.ok) { toast(j.error, true); throw new Error(j.error); } return j; }
 
 async function detectLive() {
   const r = await get('/api/lives');
@@ -1463,7 +1502,53 @@ function renderMe() {
   if (document.activeElement?.closest?.('#v-compte form')) return; // ne pas écraser une saisie en cours
   q('#pfName').value = ME.fullName; q('#pfEmail').value = ME.email; q('#pfShop').value = ME.shopName;
 }
-async function loadMe() { ME = await get('/api/me'); renderMe(); }
+async function loadMe() { ME = await get('/api/me'); renderMe(); renderAccess(); }
+// ---------- Compte à activer, suspendu ou bientôt expiré
+window.addEventListener('unhandledrejection', (e) => { if (/Compte non activé|Session expirée/.test(e.reason?.message || '')) e.preventDefault(); });
+let accessTimer;
+async function checkAccess() { try { ME = await get('/api/me'); renderAccess(); } catch (e) {} }
+const telDigits = (n) => String(n || '').replace(/\D/g, '');
+const waLink = (n, text) => { let d = telDigits(n); if (d.startsWith('0')) d = '261' + d.slice(1); return `https://wa.me/${d}?text=${encodeURIComponent(text)}`; };
+const dateFr = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+function renderAccess() {
+  const a = ME?.access; if (!a) return;
+  q('#navAdmin').hidden = !ME.isAdmin; q('#adminLink2').hidden = !ME.isAdmin;
+  const notes = [];
+  if (ME.impersonating) notes.push(`<div class="topnote asview">Vous regardez l’espace de « ${esc(ME.shopName)} » en super admin.<button class="sm" onclick="stopView()">Revenir à l’admin</button></div>`);
+  if (!a.locked && a.daysLeft !== null && a.daysLeft <= 5 && !ME.impersonating) notes.push(`<div class="topnote warn">Votre abonnement se termine ${a.daysLeft <= 0 ? 'aujourd’hui' : a.daysLeft === 1 ? 'demain' : `dans ${a.daysLeft} jours`} (${dateFr(a.paidUntil)}).<button class="sm" onclick="showPay(true)">Renouveler</button></div>`);
+  q('#topNotes').innerHTML = notes.join('');
+  const locked = a.locked && !ME.isAdmin;
+  document.body.classList.toggle('locked', locked);
+  if (locked) { showPay(false); clearInterval(accessTimer); accessTimer = setInterval(async () => { const x = await fetch('/api/access').then((r) => r.json()).catch(() => null); if (x && !x.locked) location.reload(); }, 20000); }
+  else if (!q('#lockScreen').dataset.dismissible) q('#lockScreen').hidden = true;
+}
+function showPay(dismissible) {
+  const a = ME.access, p = a.pay; if (!p) return;
+  const el = q('#lockScreen'); el.hidden = false; el.dataset.dismissible = dismissible ? '1' : '';
+  const mmKey = (m) => m.split(' ')[0];
+  const mmTag = { MVola: 'MV', Orange: 'OM', Airtel: 'AM' };
+  const head = a.status === 'suspended' ? ['red', 'Votre compte est suspendu', `Vos ventes, commandes et clients sont conservés. ${a.reason ? 'Motif : ' + a.reason + '. ' : ''}Contactez le support pour le réactiver.`]
+    : a.status === 'expired' ? ['red', 'Votre abonnement est terminé', `Il a pris fin le ${dateFr(a.paidUntil)}. Vos ventes, commandes et clients sont conservés : payez pour tout retrouver.`]
+    : a.status === 'pending' ? ['', 'Votre compte est presque prêt', p.lockMessage]
+    : ['', 'Renouveler l’abonnement', `Payez avant le ${dateFr(a.paidUntil)} pour ne pas être interrompu en plein live.`];
+  const msg = `Bonjour, voici la référence de mon paiement Live Companion pour la boutique « ${ME.shopName} » : `;
+  q('#lockCard').innerHTML = `
+    <span class="lock-ico ${head[0]}"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>
+    <h2 id="lockTitle">${head[1]}</h2><p class="lead">${esc(head[2])}</p>
+    ${a.status === 'suspended' && a.message ? `<div class="lock-note">${esc(a.message)}</div>` : ''}
+    <span class="lock-price">Abonnement : ${mga(p.priceMonthMga)} / mois${p.price3MonthsMga ? ` · ${mga(p.price3MonthsMga)} les 3 mois` : ''}</span>
+    ${p.wallets.length ? `<div class="wallets">${p.wallets.map((w) => `<div class="wallet"><span class="mm ${mmKey(w.method)}">${mmTag[mmKey(w.method)] || ''}</span><span><b>${esc(w.method)}</b><br><span class="muted" style="font-size:13px">${esc(w.holder)}</span></span><span class="num">${esc(w.number)}</span><button class="sm" aria-label="Copier le numéro ${esc(w.method)}" onclick="copyNum('${esc(telDigits(w.number))}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div>`).join('')}</div>` : ''}
+    <ol class="paysteps"><li>Envoyez le montant sur l’un de ces numéros.</li><li>Envoyez la référence de la transaction au support.</li><li>Votre compte s’ouvre dès que le paiement est vérifié.</li></ol>
+    <div class="lock-acts">
+      ${p.supportWhatsapp ? `<a class="btn primary" href="${esc(waLink(p.supportWhatsapp, msg))}" target="_blank" rel="noopener"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12Z"/></svg>Envoyer la référence sur WhatsApp</a>` : ''}
+      ${p.supportPhone ? `<a class="btn" href="tel:${esc(telDigits(p.supportPhone))}" aria-label="Appeler le support"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2Z"/></svg><span class="lbl">Appeler</span></a>` : ''}
+    </div>
+    <div class="lock-foot">Support : ${esc(p.supportPhone || p.supportWhatsapp)}${p.supportHours ? ' · ' + esc(p.supportHours) : ''}<br>
+      ${dismissible ? '<button class="sm" style="margin-top:8px" onclick="closePay()">Plus tard</button>' : '<a href="#" onclick="event.preventDefault();logout()">Se déconnecter</a>'}</div>`;
+}
+function closePay() { const el = q('#lockScreen'); el.hidden = true; el.dataset.dismissible = ''; }
+async function copyNum(n) { try { await navigator.clipboard.writeText(n); toast('Numéro copié'); } catch (e) { toast(n); } }
+async function stopView() { await fetch('/api/view/stop', { method: 'POST' }).catch(() => {}); location.href = '/admin'; }
 async function saveProfile() {
   q('#pfErr').textContent = ''; q('#pfOk').textContent = '';
   try { ME = await post('/api/me', { fullName: q('#pfName').value, email: q('#pfEmail').value, shopName: q('#pfShop').value }); renderMe(); q('#pfOk').textContent = 'Profil enregistré.'; }
@@ -1516,8 +1601,7 @@ q('#pageSel').onchange = (e) => e.target.value && api('/api/pages/select', { pag
 
 const es = new EventSource('/events');
 es.onmessage = (m) => { const e = JSON.parse(m.data); if (e.type === 'log') logLine(e.data.message); refresh(); };
-refresh();
-loadMe();
+loadMe().then(() => { if (!document.body.classList.contains('locked')) refresh(); }).catch(() => {});
 // Vérifie (et rétablit si besoin) l'abonnement Messenger à l'ouverture de l'écran
 fetch('/api/pages/subscription/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(() => refresh()).catch(() => {});
 </script>

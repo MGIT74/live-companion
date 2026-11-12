@@ -13,7 +13,8 @@ import { receiveWebhook, verifyWebhook } from './webhooks.ts';
 import { deleteProduct, moveProduct, removeProductPhoto, saveProduct, setProductPhoto } from './catalog.ts';
 import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { allShopIds, archiveSession, currentShopId, flushAll, listSessions, loadShops, persist, recordTest, resetLiveData, runInShop, sessionSnapshot, shopForPage, state, TESTS, type TestStatus } from './store.ts';
-import { changePassword, clearSession, login, requireAccount, signup, updateProfile, usersCount } from './accounts.ts';
+import { changePassword, clearSession, login, requireAccount, requireActive, signup, startImpersonation, stopImpersonation, updateProfile, usersCount } from './accounts.ts';
+import { accessInfo, activate, adminAccount, adminLogs, adminLogStats, adminOverview, adminPayments, getSettings, migratePlatform, PAY_METHODS, saveSettings, suspend, SUSPEND_REASONS, unsuspend } from './platform.ts';
 import { migrate } from './db.ts';
 import { REPLAY_DAYS, startWatcher } from './watcher.ts';
 import { customerDetail, listCustomers, liveDetail, livesHistory, periodStats } from './stats.ts';
@@ -91,13 +92,17 @@ const pub = (fn: (req: Request, res: Response) => Promise<unknown> | unknown) =>
 app.get('/connexion', (_req, res) => res.sendFile('login.html', { root: config.publicDir }));
 app.get('/compte/etat', pub(async () => ({ firstAccount: (await usersCount()) === 0, allowSignup: config.allowSignup })));
 app.post('/compte/inscription', pub((req, res) => signup(res, req.body)));
-app.post('/compte/connexion', pub((req, res) => login(res, req.body)));
+app.post('/compte/connexion', pub((req, res) => login(res, req.body, req)));
 app.post('/compte/deconnexion', (_req, res) => { clearSession(res); res.json({ ok: true }); });
 
 // ---------------------------------------------------------------- Tableau de bord (compte requis, dans le contexte de sa boutique)
 app.get(['/', '/index.html'], requireAccount({ page: true }), (_req, res) => res.sendFile('index.html', { root: config.publicDir }));
 app.use(express.static(config.publicDir, { index: false }));
-app.use(['/api', '/events', '/auth/login', '/report.md'], requireAccount());
+app.get('/admin', requireAccount({ page: true }), (req, res) => {
+  if (!req.account?.isAdmin) return res.redirect('/');
+  res.sendFile('admin.html', { root: config.publicDir });
+});
+app.use(['/api', '/events', '/auth/login', '/report.md'], requireAccount(), requireActive);
 
 app.get('/auth/login', (_req, res) => {
   const st = crypto.randomBytes(16).toString('hex');
@@ -130,6 +135,7 @@ const wrap = (fn: (req: Request, res: Response) => Promise<unknown> | unknown) =
     if (!res.headersSent) res.json(out ?? { ok: true });
   } catch (e: any) {
     const status = e instanceof GraphError ? 502 : 400;
+    if (!req.path.startsWith('/api/admin')) log(status === 502 ? 'error' : 'warn', `${e.message} (${req.method} ${req.path})`, e instanceof GraphError ? e.body : undefined);
     res.status(status).json({ error: e.message, meta: e instanceof GraphError ? e.body : undefined });
   }
 };
@@ -332,7 +338,27 @@ app.get('/api/customers/:key', wrap((req) => customerDetail(req.params.key)));
 app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));
 
 // Mon compte
-app.get('/api/me', wrap((req) => req.account));
+app.get('/api/me', wrap((req) => ({ ...req.account, access: accessInfo(req.account!.shopId) })));
+app.get('/api/access', wrap((req) => accessInfo(req.account!.shopId)));
+
+// ---------------------------------------------------------------- Super admin
+const admin = express.Router();
+admin.use((req, res, next) => (req.account?.isAdmin ? next() : res.status(403).json({ error: 'Réservé au super admin' })));
+admin.get('/overview', wrap(() => adminOverview()));
+admin.get('/accounts/:id', wrap((req) => adminAccount(req.params.id, String(req.query.filter ?? 'problems'))));
+admin.post('/accounts/:id/activate', wrap((req) => activate(req.params.id, req.account!.id, req.body)));
+admin.post('/accounts/:id/suspend', wrap((req) => suspend(req.params.id, req.account!.ownShopId, req.body)));
+admin.post('/accounts/:id/unsuspend', wrap((req) => unsuspend(req.params.id)));
+admin.post('/accounts/:id/view', wrap((req, res) => { startImpersonation(res, req.account!.id, req.params.id); }));
+admin.get('/logs', wrap(async (req) => {
+  const days = Math.min(Number(req.query.days) || 1, 30);
+  return { stats: await adminLogStats(days), logs: await adminLogs({ filter: String(req.query.filter ?? 'error'), days, search: String(req.query.q ?? '').slice(0, 80) || undefined, limit: 400 }) };
+}));
+admin.get('/payments', wrap(() => adminPayments()));
+admin.get('/settings', wrap(() => ({ settings: getSettings(), methods: PAY_METHODS, reasons: SUSPEND_REASONS })));
+admin.post('/settings', wrap((req) => saveSettings(req.body)));
+app.use('/api/admin', admin);
+app.post('/api/view/stop', wrap((_req, res) => { stopImpersonation(res); }));
 app.post('/api/me', wrap((req) => updateProfile(req.account!, req.body)));
 app.post('/api/me/password', wrap((req) => changePassword(req.account!, req.body)));
 // Déconnecter Facebook : oublie les jetons et la Page de cette boutique (produits et sessions gardés)
@@ -509,6 +535,7 @@ app.get('/report.md', (_req, res) => {
 });
 
 await migrate();
+await migratePlatform();
 await loadShops();
 for (const id of allShopIds()) {
   // Vérification Messenger au démarrage, boutique par boutique.

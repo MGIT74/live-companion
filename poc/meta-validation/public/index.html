@@ -61,20 +61,30 @@
   /* ---------- Fiche client : tiroir à droite (plein écran sur téléphone) */
   .drawer { position:fixed; inset:0; z-index:70; }
   .drawer-bg { position:absolute; inset:0; background:rgba(0,0,0,.32); animation:dfade .2s ease; }
-  .drawer-panel { position:absolute; top:0; right:0; bottom:0; width:100%; background:var(--bg); overflow-y:auto; display:flex; flex-direction:column; gap:16px;
+  .drawer { --dpanel:var(--bg); --dcard:var(--card); }
+  .drawer-panel { position:absolute; top:0; right:0; bottom:0; width:100%; background:var(--dpanel); border-left:1px solid var(--sep); overflow-y:auto; display:flex; flex-direction:column; gap:16px;
     padding:calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); box-shadow:-20px 0 60px rgba(0,0,0,.25); animation:dslide .25s cubic-bezier(.2,.8,.2,1); }
   @keyframes dslide { from { transform:translateX(100%); } to { transform:none; } }
   @keyframes dfade { from { opacity:0; } to { opacity:1; } }
-  .drawer-top { position:sticky; top:0; z-index:2; margin:calc(-14px - env(safe-area-inset-top)) -16px 0; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; background:var(--bg); display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid var(--sep); }
+  @keyframes dslideout { from { transform:none; } to { transform:translateX(100%); } }
+  @keyframes dfadeout { from { opacity:1; } to { opacity:0; } }
+  .drawer.closing .drawer-panel { animation:dslideout .22s cubic-bezier(.4,0,1,1) forwards; }
+  .drawer.closing .drawer-bg { animation:dfadeout .22s ease forwards; }
+  @media (prefers-reduced-motion: reduce) { .drawer-panel, .drawer-bg, .drawer.closing .drawer-panel, .drawer.closing .drawer-bg { animation-duration:.01s; } }
+  /* Sombre : le tiroir est un plan surélevé (gris), pas du noir sur du noir */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .drawer { --dpanel:#1C1C1E; --dcard:#2C2C2E; } :root:not([data-theme="light"]) .drawer-bg { background:rgba(0,0,0,.6); } }
+  :root[data-theme="dark"] .drawer { --dpanel:#1C1C1E; --dcard:#2C2C2E; }
+  :root[data-theme="dark"] .drawer-bg { background:rgba(0,0,0,.6); }
+  .drawer-top { position:sticky; top:0; z-index:2; margin:calc(-14px - env(safe-area-inset-top)) -16px 0; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; background:var(--dpanel); display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid var(--sep); }
   .drawer-top .x { width:38px; min-height:38px; padding:0; border-radius:50%; }
-  .dh { display:flex; align-items:center; gap:14px; }
+  .dh { display:flex; align-items:center; gap:14px; margin-top:4px; }
   .dh .avatar { width:56px; height:56px; font-size:20px; flex:none; }
   .dh h2 { font-size:22px; letter-spacing:-.02em; }
-  .dstats { display:grid; grid-template-columns:1fr 1fr; background:var(--card); border-radius:16px; box-shadow:var(--shadow); }
+  .dstats { display:grid; grid-template-columns:1fr 1fr; background:var(--dcard); border-radius:16px; box-shadow:var(--shadow); }
   .dstats > div { padding:14px 16px; display:flex; flex-direction:column; gap:2px; min-width:0; }
   .dstats > div:nth-child(even) { border-left:1px solid var(--sep); } .dstats > div:nth-child(n+3) { border-top:1px solid var(--sep); }
   .dstats .l { font-size:13px; color:var(--muted); } .dstats .v { font-size:20px; font-weight:700; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .dstats .h { font-size:12px; color:var(--muted); }
-  .dsec { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:4px 16px; }
+  .dsec { background:var(--dcard); border-radius:16px; box-shadow:var(--shadow); padding:4px 16px; }
   .dsec h3 { margin:12px 0 4px; font-size:15px; }
   .dline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--sep); font-size:14px; }
   .dsec h3 + .dline { border-top:0; }
@@ -1495,7 +1505,7 @@ async function loadClients() {
 }
 async function openClient(key) {
   const c = await get(`/api/customers/${key}`);
-  const el = q('#clDetail'); q('#clDrawer').hidden = false; document.body.classList.add('drawer-open');
+  const el = q('#clDetail'); q('#clDrawer').classList.remove('closing'); q('#clDrawer').hidden = false; document.body.classList.add('drawer-open');
   const cancelled = c.cancelled >= 2 ? 'à surveiller' : 'client fiable';
   el.innerHTML = `
     <div class="drawer-top"><b>Fiche client</b><span class="row" style="margin:0;gap:8px">${c.phone ? `<a class="btn sm" href="tel:${esc(c.phone)}">Appeler</a>` : ''}<button class="x" onclick="closeClient()" aria-label="Fermer la fiche">✕</button></span></div>
@@ -1515,7 +1525,14 @@ async function openClient(key) {
   el.scrollTop = 0;
   el.focus({ preventScroll: true });
 }
-function closeClient() { q('#clDrawer').hidden = true; document.body.classList.remove('drawer-open'); }
+function closeClient() {
+  const d = q('#clDrawer');
+  if (d.hidden || d.classList.contains('closing')) return;
+  d.classList.add('closing');
+  const done = () => { d.hidden = true; d.classList.remove('closing'); document.body.classList.remove('drawer-open'); };
+  d.querySelector('.drawer-panel').addEventListener('animationend', done, { once: true });
+  setTimeout(() => { if (d.classList.contains('closing')) done(); }, 400); // au cas où l'animation ne se déclenche pas
+}
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !q('#clDrawer').hidden) closeClient(); });
 
 // ---------- Mon compte

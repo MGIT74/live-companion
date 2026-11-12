@@ -1,4 +1,5 @@
 import { q } from './db.ts';
+import { cleanName } from './names.ts';
 import { currentShopId, state, type Conversation, type Followed, type Intent, type LiveComment, type ProductComment, type Product, type SaleKind } from './store.ts';
 
 /**
@@ -19,6 +20,8 @@ interface Snapshot {
 
 export interface Sale {
   sessionId: string;
+  intentId: string;
+  phone?: string; city?: string; payment?: string;
   at: string;          // heure de la réservation (commentaire)
   confirmedAt?: string;
   status: Intent['status'];
@@ -72,7 +75,7 @@ function currentSnapshot(): Snapshot {
 
 function customerName(s: Snapshot, intent: Intent) {
   const conv = Object.values(s.conversations).find((c) => c.intentIds.includes(intent.id));
-  return (conv?.customer.name || intent.authorName || 'Client').trim();
+  return conv?.customer.name ? cleanName(conv.customer.name) : (intent.authorName || 'Client').trim();
 }
 
 function salesOf(s: Snapshot, objectId?: string): Sale[] {
@@ -81,8 +84,9 @@ function salesOf(s: Snapshot, objectId?: string): Sale[] {
     .filter((i) => i.code && ['RESERVED', 'CONFIRMED', 'CANCELLED'].includes(i.status) && (!objectId || i.liveVideoId === objectId))
     .map((i) => {
       const p = price.get(i.code!);
+      const conv = Object.values(s.conversations).find((c) => c.intentIds.includes(i.id));
       return {
-        sessionId: s.summary.id, at: i.createdAt, confirmedAt: i.confirmedAt, status: i.status,
+        sessionId: s.summary.id, intentId: i.id, phone: conv?.customer.phone, city: conv?.customer.city, payment: conv?.customer.payment, at: i.createdAt, confirmedAt: i.confirmedAt, status: i.status,
         code: i.code!, name: p?.name ?? i.code!, variant: i.variant, quantity: i.quantity,
         amount: (i.unitPriceMga ?? p?.priceMga ?? 0) * i.quantity, customer: customerName(s, i),
       };
@@ -198,9 +202,12 @@ export async function liveDetail(id: string) {
     .map((c) => ({ id: c.id, from: c.fromName ?? 'Anonyme', message: c.message, at: c.createdTime ?? c.receivedAt, status: c.intentId ? intentById.get(c.intentId)?.status : undefined }));
   const conversations = Object.values(s.conversations)
     .filter((c) => c.intentIds.some((i) => intentIds.has(i)))
-    .map((c) => ({ name: c.customer.name ?? 'Client', phone: c.customer.phone, city: c.customer.city, payment: c.customer.payment, step: c.step }));
+    .map((c) => ({ name: c.customer.name ? cleanName(c.customer.name) : 'Client', phone: c.customer.phone, city: c.customer.city, payment: c.customer.payment, step: c.step }));
+  const toValidate = intents.filter((i) => ['NEEDS_REVIEW', 'WAITLISTED'].includes(i.status)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((i) => ({ id: i.id, author: i.authorName ?? 'Client', text: i.rawText, at: i.createdAt, reason: i.reason, status: i.status, code: i.code, variant: i.variant, quantity: i.quantity }));
   return {
     summary: summarize(s, current, objectId),
+    toValidate,
     products: products.sort((a, b) => b.revenueMga - a.revenueMga || Number(b.published) - Number(a.published)),
     customers: [...customers.values()].sort((a, b) => b.revenueMga - a.revenueMga),
     comments,
@@ -306,7 +313,7 @@ async function customerIndex() {
     for (const i of s.intents) {
       if (!i.code || !['RESERVED', 'CONFIRMED', 'CANCELLED'].includes(i.status)) continue;
       const conv = Object.values(s.conversations).find((c) => c.intentIds.includes(i.id));
-      const name = (conv?.customer.name || i.authorName || 'Client').trim();
+      const name = conv?.customer.name ? cleanName(conv.customer.name) : (i.authorName || 'Client').trim();
       const key = name.toLowerCase();
       let c = map.get(key);
       if (!c) {

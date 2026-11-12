@@ -3,6 +3,7 @@ import { emit, log } from './bus.ts';
 import { saveEvidence } from './evidence.ts';
 import { graph, GraphError, selectedPage } from './graph.ts';
 import { confirmIntent, findProduct, releaseIntent } from './reservations.ts';
+import { cleanName } from './names.ts';
 import { persist, recordTest, state, type Conversation, type Intent } from './store.ts';
 
 /** Envoi via la Send API de la Page. */
@@ -152,7 +153,7 @@ export async function handleInboundMessage(event: any) {
       await reply({ text: 'Souhaitez-vous confirmer votre commande ?', quick_replies: quick([['✅ Confirmer', `CONFIRM:${conv.intentIds.at(-1)}`], ['❌ Annuler', `CANCEL:${conv.intentIds.at(-1)}`]]) });
     }
   } else if (conv.step === 'ASK_NAME') {
-    conv.customer.name = text.trim();
+    conv.customer.name = cleanName(text);
     conv.step = 'ASK_PHONE';
     await reply({ text: 'Votre numéro de téléphone ?' });
   } else if (conv.step === 'ASK_PHONE') {

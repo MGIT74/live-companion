@@ -54,7 +54,77 @@
     background:none; border:0; cursor:pointer; text-align:left; width:100%; }
   .nav:hover { background:var(--fill); color:var(--ink); }
   .nav[aria-current="page"] { background:var(--soft); color:var(--accent); font-weight:600; }
-  .nav .count { margin-left:auto; font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--orange-bg); color:var(--orange); }
+  .nav .count { margin-left:auto; font-size:12px; font-weight:700; min-width:20px; text-align:center; padding:1px 7px; border-radius:999px; background:var(--red); color:#fff; }
+  .tabbar .count { position:absolute; top:2px; left:calc(50% + 6px); font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; padding:0 5px; border-radius:999px; background:var(--red); color:#fff; text-align:center; }
+  .tabbar .count:empty { display:none; }
+
+  /* ---------- Détail d'une vente en ligne */
+  .vd-back { background:none; border:0; padding:0; color:var(--accent); font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:4px; min-height:32px; }
+  .vd-head { display:flex; align-items:center; gap:18px; }
+  .vd-head .vthumb.lg { width:72px; height:72px; border-radius:14px; }
+  .vd-title { flex:1; min-width:0; }
+  .vd-title h1 { font-size:24px; margin:6px 0 2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vd-acts { display:flex; gap:8px; align-items:center; flex:none; }
+  .vd-acts .more { position:relative; }
+  .vd-menu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; min-width:200px; background:var(--card); border:1px solid var(--sep); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.18); padding:6px; }
+  .vd-menu a, .vd-menu button { display:block; width:100%; text-align:left; padding:9px 12px; border-radius:8px; border:0; background:none; color:var(--ink); text-decoration:none; cursor:pointer; }
+  .vd-menu a:hover, .vd-menu button:hover { background:var(--fill); }
+  .btn.red, button.red { background:var(--red); color:#fff; border-color:transparent; }
+  .vstats { display:grid; grid-template-columns:repeat(5,1fr); padding:0; }
+  .vstat { padding:16px 20px; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .vstat + .vstat { border-left:1px solid var(--sep); }
+  .vstat .l { font-size:13px; color:var(--muted); }
+  .vstat .v { font-size:22px; font-weight:700; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vstat .h { font-size:12px; color:var(--muted); }
+  .vstat.warn .v { color:var(--orange); }
+  .vtabs { display:flex; gap:26px; border-bottom:1px solid var(--sep); overflow-x:auto; scrollbar-width:none; }
+  .vtab { background:none; border:0; padding:10px 0 12px; margin-bottom:-1px; color:var(--muted); font-weight:500; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
+  .vtab .n { margin-left:6px; font-size:12px; padding:1px 7px; border-radius:999px; background:var(--fill); color:var(--muted); font-weight:600; }
+  .vtab .n.warn { background:var(--orange-bg); color:var(--orange); }
+  .vtab[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+  .vtab:hover { background:none; color:var(--ink); }
+  .vpanel { padding:4px 0; }
+  .vthead, .vtrow { display:grid; grid-template-columns:2.2fr 2.2fr 1.1fr 1fr 1fr 20px; gap:14px; align-items:center; padding:12px 20px; }
+  .vthead { font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em; padding-top:14px; padding-bottom:10px; }
+  .vtrow { border-top:1px solid var(--sep); cursor:pointer; }
+  .vtrow:hover { background:var(--fill); }
+  .vtrow .who { display:flex; align-items:center; gap:12px; min-width:0; }
+  .vtrow .who span:last-child, .vtrow .vpr { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .vtrow .amt { font-weight:600; text-align:right; }
+  .vthead .r { text-align:right; }
+  .chev { color:var(--muted); }
+  .vrow { display:grid; grid-template-columns:2.4fr 2fr auto; gap:14px; align-items:center; padding:14px 20px; border-top:1px solid var(--sep); }
+  .vrow:first-child, .vtrow.first { border-top:0; }
+  .vrow .sel { display:flex; gap:8px; }
+  .vrow select { min-height:36px; border-radius:9px; border:1px solid var(--line); background:var(--card); padding:4px 8px; min-width:0; flex:1; }
+  .vrow .sel select.sz { flex:0 0 128px; }
+  .vrow .acts { display:flex; gap:6px; }
+  .vline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 20px; border-top:1px solid var(--sep); }
+  .vline:first-child { border-top:0; }
+  .vempty { padding:36px 20px; text-align:center; color:var(--muted); }
+  @media (max-width: 760px) {
+    .vd-head { flex-wrap:wrap; gap:14px; }
+    .vd-head .vthumb.lg { width:56px; height:56px; }
+    .vd-title h1 { font-size:20px; white-space:normal; }
+    .vd-acts { width:100%; }
+    .vd-acts .red { margin-left:auto; }
+    .vstats { grid-template-columns:1fr 1fr; }
+    .vstat + .vstat { border-left:0; }
+    .vstat:nth-child(even) { border-left:1px solid var(--sep); }
+    .vstat:nth-child(n+3) { border-top:1px solid var(--sep); }
+    .vstat:last-child { grid-column:1 / -1; border-left:0; }
+    .vtabs { gap:8px; border:0; }
+    .vtab { padding:7px 14px; border-radius:999px; background:var(--fill); border:0; margin:0; }
+    .vtab[aria-selected="true"], .vtab[aria-selected="true"]:hover { background:var(--ink); color:var(--bg); }
+    .vtab:hover { background:var(--fill); }
+    .vtab[aria-selected="true"] .n { background:rgba(127,127,127,.3); color:inherit; }
+    .vthead { display:none; }
+    .vtrow { grid-template-columns:1fr auto; grid-template-areas:"who amt" "prod st"; gap:6px 12px; padding:14px 16px; }
+    .vtrow .who { grid-area:who; } .vtrow .vpr { grid-area:prod; color:var(--muted); font-size:14px; } .vtrow .amt { grid-area:amt; } .vtrow .st { grid-area:st; text-align:right; }
+    .vtrow .tm, .vtrow .chev { display:none; }
+    .vrow { grid-template-columns:1fr; padding:14px 16px; }
+    .vrow .acts button { flex:1; }
+  }
   .nav .count:empty { display:none; }
   .grow { flex:1; min-height:16px; }
   .main { flex:1; min-width:0; padding:28px 36px 64px; display:flex; flex-direction:column; gap:18px; }
@@ -275,7 +345,7 @@
     .kpi .v { font-size:20px; }
     .tabbar { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:30; justify-content:space-around; padding:6px 2px calc(6px + env(safe-area-inset-bottom));
       background:var(--side); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid var(--sep); }
-    .tabbar button { flex-direction:column; gap:2px; background:none; min-height:0; padding:4px; font-size:11px; font-weight:500; color:var(--muted); min-width:58px; }
+    .tabbar button { position:relative; flex-direction:column; gap:2px; background:none; min-height:0; padding:4px; font-size:11px; font-weight:500; color:var(--muted); min-width:58px; }
     .tabbar button[aria-current="page"] { color:var(--accent); }
     .toast { bottom:84px; }
     .hide-sm { display:none; }
@@ -366,7 +436,9 @@
         <button type="button" data-k="all" aria-pressed="true">Toutes</button><button type="button" data-k="live" aria-pressed="false">Lives</button><button type="button" data-k="photo" aria-pressed="false">Posts photo</button><button type="button" data-k="video" aria-pressed="false">Posts vidéo</button>
       </div>
       <div class="card"><div id="livesList" class="table-wrap"><div class="empty">Chargement…</div></div></div>
-      <div class="card" id="liveDetail" hidden></div>
+    </section>
+    <section class="view" id="v-sale" aria-label="Détail de la vente">
+      <div id="liveDetail"></div>
     </section>
 
     <!-- ================= Régie ================= -->
@@ -565,7 +637,7 @@
   <nav class="tabbar" aria-label="Menu">
     <button data-view="stats"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
     <button data-view="regie"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Régie</button>
-    <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Commandes<span id="tabReview"></span></span></button>
+    <button data-view="reservations"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Commandes</span><span class="count" id="tabReview"></span></button>
     <button data-view="stock"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Produits</button>
     <button data-view="compte"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Plus</button>
   </nav>
@@ -636,8 +708,9 @@ const ago = (d) => { if (!d) return ''; const s = Math.round((Date.now() - new D
 // ---------- Vues (menu)
 function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
-  document.querySelectorAll('[data-view]').forEach((b) => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  try { localStorage.setItem('lc.view', view); } catch (e) {}
+  const navView = view === 'sale' ? 'lives' : view;
+  document.querySelectorAll('[data-view]').forEach((b) => { if (b.dataset.view === navView) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  try { localStorage.setItem('lc.view', navView); } catch (e) {}
   if (view === 'stats') loadStats();
   if (view === 'lives') loadLives();
   if (view === 'clients') loadClients();
@@ -803,7 +876,7 @@ function render() {
   q('#kReview').textContent = review;
   q('#kConfirmed').textContent = S.intents.filter((i) => i.status === 'CONFIRMED').length;
   q('#navReview').textContent = review || '';
-  q('#tabReview').textContent = review ? ` · ${review}` : '';
+  q('#tabReview').textContent = review || '';
 
   const st = S.ingestion.stats;
   q('#ingest').innerHTML = `Lecture 5 s : <b>${S.ingestion.polling ? 'active' : 'arrêtée'}</b> · Temps réel : <b>${S.ingestion.sse ? 'actif' : 'arrêté'}</b><br>
@@ -1213,12 +1286,13 @@ async function loadStats() {
 
 // ---------- Ventes en ligne
 async function closeSale(id) {
-  const name = vtList.find((x) => x.objectId === id && x.current)?.name || 'cette vente';
+  const name = vtList.find((x) => x.objectId === id && x.current)?.name || (VD?.d.summary.objectId === id ? VD.d.summary.name : '') || 'cette vente';
   if (!(await ask({ title: `Terminer « ${name} » ?`, message: 'Plus aucune commande ne sera prise sur cette vente (commentaires ni saisie rapide). Les commandes déjà passées restent, et les clients peuvent encore confirmer sur Messenger.', ok: 'Terminer la vente', danger: true }))) return;
-  await api(`/api/sales/${encodeURIComponent(id)}/close`); toast('Vente terminée : elle ne prend plus de commandes'); loadLives();
+  await api(`/api/sales/${encodeURIComponent(id)}/close`); toast('Vente terminée : elle ne prend plus de commandes'); saleChanged();
 }
+function saleChanged() { if (q('#v-sale').classList.contains('on') && VD) openLive(VD.id); else loadLives(); }
 async function reopenSale(id) {
-  await api(`/api/sales/${encodeURIComponent(id)}/reopen`); toast('Vente rouverte : les commandes sont de nouveau prises'); loadLives();
+  await api(`/api/sales/${encodeURIComponent(id)}/reopen`); toast('Vente rouverte : les commandes sont de nouveau prises'); saleChanged();
 }
 var vtKind = 'all', vtList = [];
 document.querySelectorAll('#vtSeg button').forEach((b) => b.addEventListener('click', () => {
@@ -1240,33 +1314,99 @@ async function loadLives() {
   document.querySelectorAll('#vtSeg button').forEach((b) => { const base = { all: 'Toutes', live: 'Lives', photo: 'Posts photo', video: 'Posts vidéo' }[b.dataset.k]; b.textContent = counts[b.dataset.k] ? `${base} · ${counts[b.dataset.k]}` : base; });
   renderLives();
 }
-async function openLive(id) {
-  if (!q('#v-lives').classList.contains('on')) show('lives');
+var VD = null, vdTab = 'orders';
+async function openLive(id, tab) {
   const d = await get(`/api/lives/history/${encodeURIComponent(id)}`);
-  const l = d.summary, el = q('#liveDetail');
-  const row = (left, right) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)">${left}${right}</div>`;
-  el.hidden = false;
-  el.innerHTML = `<div class="card-head" style="align-items:flex-start">
-      <div class="row" style="margin:0;gap:16px;flex-wrap:nowrap">${vthumb(l, true)}<div>${kindPill(l.kind)}${l.active && !l.replayUntil ? ' <span class="pill live-on">EN COURS</span>' : ''}${l.replayUntil ? ` <span class="pill AWAIT_CONFIRM">Commentaires lus jusqu’au ${dt(l.replayUntil, false)}</span>` : ''}<h2 style="font-size:22px;margin-top:6px">${esc(l.name)}</h2><span class="muted">${livePeriod(l)}</span></div></div>
-      <div class="row" style="margin:0">${l.permalink ? `<a class="btn sm" href="${esc(l.permalink)}" target="_blank" rel="noopener">Voir sur Facebook</a>` : ''}${l.active ? `<button class="sm primary" onclick="show('regie')">Ouvrir la régie</button>` : ''}${l.current ? '' : `<a class="btn sm" href="/api/sessions/${encodeURIComponent(l.sessionId)}/download">Télécharger</a>`}<button class="sm" onclick="q('#liveDetail').hidden=true" aria-label="Fermer">✕</button></div></div>
-    <div class="kpis" style="margin-bottom:18px">
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.pendingMga ? '+ ' + mga(l.pendingMga) + ' en attente' : 'commandes confirmées'}</span></div>
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commandes</span><span class="v">${l.reservations}</span><span class="h">${l.confirmed} confirmée${l.confirmed > 1 ? 's' : ''}${l.toValidate ? ` · ${l.toValidate} à valider` : ''}</span></div>
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Articles vendus</span><span class="v">${l.itemsSold}</span><span class="h">${l.customers} client${l.customers > 1 ? 's' : ''}</span></div>
-      <div class="card kpi" style="background:var(--fill);box-shadow:none"><span class="l">Commentaires</span><span class="v">${l.comments}</span><span class="h">${l.cancelled} annulée${l.cancelled > 1 ? 's' : ''}</span></div>
-    </div>
-    <h2 style="margin-bottom:10px">Produits en vente</h2>
-    ${d.products.length ? `<div class="vprods">${d.products.map((p) => `<div class="vprod"><span class="ph" style="${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}"></span><div style="min-width:0;flex:1"><span class="code">${esc(p.code)}</span> ${p.published ? '<span class="pill OK">Publié</span>' : ''}<br><b>${esc(p.name)}</b><br><span class="muted">${mga(p.priceMga)} · ${p.sold} vendu${p.sold > 1 ? 's' : ''}${p.pending ? ` · ${p.pending} en attente` : ''}</span>${l.current ? `<div class="row" style="margin:6px 0 0;gap:4px">${chips(p.variants)}</div>` : ''}</div></div>`).join('')}</div>` : '<div class="empty">Aucun produit pour cette vente.</div>'}
-    <div class="grid cols-2" style="margin-top:18px">
-      <div><h2 style="margin-bottom:6px">Commentaires · ${d.comments.length}</h2><div class="list" style="max-height:420px">${d.comments.map((c) => `<div class="item"><div class="head"><span><b>${esc(c.from)}</b> <span class="muted">${dt(c.at)}</span><br>${esc(c.message)}</span>${c.status ? `<span class="pill ${c.status}">${fr(c.status)}</span>` : ''}</div></div>`).join('') || '<div class="empty">Aucun commentaire.</div>'}</div></div>
-      <div><h2 style="margin-bottom:6px">Commandes · ${d.sales.length}</h2><div class="list" style="max-height:420px">${d.sales.map((x) => `<div class="item"><div class="head"><span><b>${esc(x.customer)}</b> <span class="muted">${dt(x.at)}</span><br><span class="code">${esc(x.code)}</span> ${esc(x.name)} × ${x.quantity}${x.variant ? ' · ' + esc(x.variant) : ''}</span><span style="text-align:right"><b>${mga(x.amount)}</b><br><span class="pill ${x.status}">${fr(x.status)}</span></span></div></div>`).join('') || '<div class="empty">Aucune commande.</div>'}</div></div>
-    </div>
-    <div class="grid cols-2" style="margin-top:18px">
-      <div><h2 style="margin-bottom:6px">Clients</h2>${d.customers.map((c) => row(`<b>${esc(c.name)}</b>`, `<span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span>`)).join('') || '<div class="empty">Aucun client confirmé.</div>'}</div>
-      <div><h2 style="margin-bottom:6px">Messenger</h2>${d.conversations.map((c) => row(`<span><b>${esc(c.name)}</b><br><span class="muted">${esc([c.phone, c.city, fr(c.payment)].filter(Boolean).join(' · ') || 'coordonnées pas encore reçues')}</span></span>`, `<span class="pill ${c.step}">${fr(c.step)}</span>`)).join('') || '<div class="empty">Aucune conversation.</div>'}</div>
-    </div>`;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  VD = { id, d }; if (tab) vdTab = tab; else if (!q('#v-sale').classList.contains('on')) vdTab = 'orders';
+  show('sale');
+  renderSale();
+  window.scrollTo({ top: 0 });
 }
+function vdCustomerKey(name) { return encodeURIComponent(String(name || '').trim().toLowerCase()); }
+function renderSale() {
+  if (!VD) return;
+  const { d } = VD, l = d.summary, tv = d.toValidate || [];
+  const status = l.closedAt ? '<span class="pill KO">Terminée</span>'
+    : l.active && !l.replayUntil ? '<span class="pill live-on">EN COURS</span>'
+    : l.replayUntil ? `<span class="pill AWAIT_CONFIRM">${l.kind === 'live' ? 'Rediffusion lue' : 'Commentaires lus'} jusqu’au ${dt(l.replayUntil, false)}</span>`
+    : l.current ? '<span class="pill">Ouverte</span>' : '<span class="pill">Archivée</span>';
+  const confirmed = d.sales.filter((x) => x.status === 'CONFIRMED').length;
+  const tabs = [['orders', 'Commandes', d.sales.length], ['review', 'À valider', tv.length, tv.length ? 'warn' : ''], ['comments', 'Commentaires', d.comments.length], ['products', 'Produits', d.products.length], ['customers', 'Clients', d.customers.length]];
+  q('#liveDetail').innerHTML = `
+    <button class="vd-back" onclick="show('lives')">‹ Ventes en ligne</button>
+    <div class="vd-head" style="margin-top:10px">${vthumb(l, true)}
+      <div class="vd-title">${kindPill(l.kind)} ${status}<h1 title="${esc(l.name)}">${esc(l.name)}</h1><span class="muted">${livePeriod(l)}</span></div>
+      <div class="vd-acts">
+        ${l.permalink ? `<a class="btn sm" href="${esc(l.permalink)}" target="_blank" rel="noopener">Voir sur Facebook</a>` : ''}
+        ${l.active ? `<button class="sm" onclick="show('regie')">Régie</button>` : ''}
+        <span class="more"><button class="sm" aria-label="Plus d’actions" aria-haspopup="menu" onclick="event.stopPropagation();const m=this.nextElementSibling;m.hidden=!m.hidden">⋯</button>
+          <div class="vd-menu" role="menu" hidden>${l.current ? '' : `<a role="menuitem" href="/api/sessions/${encodeURIComponent(l.sessionId)}/download">Télécharger</a>`}<button role="menuitem" onclick="openLive(VD.id)">Actualiser</button></div></span>
+        ${!l.current ? '' : l.closedAt ? `<button class="sm" onclick="reopenSale('${esc(l.objectId)}')">Rouvrir la vente</button>` : `<button class="sm red" onclick="closeSale('${esc(l.objectId)}')">Terminer la vente</button>`}
+      </div></div>
+    <div class="card vstats" style="margin-top:18px">
+      <div class="vstat"><span class="l">Chiffre d’affaires</span><span class="v">${mga(l.revenueMga)}</span><span class="h">${l.itemsSold} article${l.itemsSold > 1 ? 's' : ''} vendu${l.itemsSold > 1 ? 's' : ''}</span></div>
+      <div class="vstat"><span class="l">En attente</span><span class="v">${mga(l.pendingMga)}</span><span class="h">pas encore confirmé</span></div>
+      <div class="vstat"><span class="l">Commandes</span><span class="v">${d.sales.length}</span><span class="h">${confirmed} confirmée${confirmed > 1 ? 's' : ''}</span></div>
+      <div class="vstat${tv.length ? ' warn' : ''}"><span class="l">À valider</span><span class="v">${tv.length}</span><span class="h">${tv.length ? 'commentaires à vérifier' : 'rien à vérifier'}</span></div>
+      <div class="vstat"><span class="l">Commentaires</span><span class="v">${d.comments.length}</span><span class="h">${l.customers} client${l.customers > 1 ? 's' : ''}</span></div>
+    </div>
+    <div class="vtabs" role="tablist" style="margin-top:22px">${tabs.map(([k, label, n, cls]) => `<button class="vtab" role="tab" aria-selected="${vdTab === k}" onclick="vdTab='${k}';renderSale()">${label}<span class="n ${cls || ''}">${n}</span></button>`).join('')}</div>
+    <div class="card vpanel" style="margin-top:14px">${vdPanel()}</div>`;
+}
+document.addEventListener('click', () => document.querySelectorAll('.vd-menu').forEach((m) => { m.hidden = true; }));
+function vdPanel() {
+  const { d } = VD, l = d.summary;
+  if (vdTab === 'orders') return d.sales.length ? `<div class="vthead"><span>Client</span><span>Produit</span><span>Heure</span><span class="r">Montant</span><span>Statut</span><span></span></div>` +
+    d.sales.map((x) => `<div class="vtrow" onclick="show('clients');openClient('${vdCustomerKey(x.customer)}')">
+      <span class="who"><span class="avatar">${esc(initials(x.customer))}</span><span><b>${esc(x.customer)}</b><br><span class="muted">${esc([x.phone, x.city, fr(x.payment)].filter(Boolean).join(' · ') || 'coordonnées à venir')}</span></span></span>
+      <span class="vpr"><span class="code">${esc(x.code)}</span> ${esc(x.name)}${x.variant ? ' · ' + esc(x.variant) : ''}${x.quantity > 1 ? ' × ' + x.quantity : ''}</span>
+      <span class="tm muted">${dt(x.at)}</span><span class="amt">${mga(x.amount)}</span><span class="st"><span class="pill ${x.status}">${fr(x.status)}</span></span><span class="chev">›</span></div>`).join('')
+    : '<div class="vempty">Aucune commande pour cette vente.</div>';
+  if (vdTab === 'review') {
+    const tv = d.toValidate || [];
+    if (!tv.length) return '<div class="vempty">Rien à valider : tous les commentaires ont été compris.</div>';
+    const can = l.current && !l.closedAt;
+    const prods = S.products;
+    return tv.map((i) => {
+      const code0 = i.code && prods.some((p) => p.code === i.code) ? i.code : '';
+      const p0 = prods.find((p) => p.code === code0);
+      return `<div class="vrow" data-id="${esc(i.id)}">
+        <span><b>${esc(i.author)}</b> <span class="muted">${dt(i.at)}</span><br>« ${esc(i.text)} »<br><span class="muted" style="font-size:13px">${esc(vdReason(i))}</span></span>
+        ${can ? `<span class="sel"><select class="pr" aria-label="Produit" onchange="vdSizes(this)"><option value="">Choisir le produit…</option>${prods.map((p) => `<option value="${esc(p.code)}"${p.code === code0 ? ' selected' : ''}>${esc(p.code)} — ${esc(p.name)}</option>`).join('')}</select>
+          <select class="sz" aria-label="Taille ou couleur">${vdSizeOpts(p0, i.variant)}</select></span>
+        <span class="acts"><button class="sm primary" onclick="vdValidate('${esc(i.id)}', this)">Valider</button><button class="sm" onclick="vdIgnore('${esc(i.id)}')">Ignorer</button></span>`
+        : `<span class="muted">${i.code ? esc(i.code) + (i.variant ? ' · ' + esc(i.variant) : '') : 'produit non reconnu'}</span><span><span class="pill ${i.status}">${fr(i.status)}</span></span>`}
+      </div>`;
+    }).join('');
+  }
+  if (vdTab === 'comments') return d.comments.map((c) => `<div class="vline"><span><b>${esc(c.from)}</b> <span class="muted">${dt(c.at)}</span><br>${esc(c.message)}</span>${c.status ? `<span class="pill ${c.status}">${fr(c.status)}</span>` : ''}</div>`).join('') || '<div class="vempty">Aucun commentaire.</div>';
+  if (vdTab === 'products') return d.products.map((p) => `<div class="vline"><span class="row" style="margin:0;flex-wrap:nowrap;gap:12px"><span class="ph" style="width:44px;height:44px;border-radius:10px;flex:none;background:var(--fill) center/cover;${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}"></span><span><span class="code">${esc(p.code)}</span> <b>${esc(p.name)}</b><br><span class="muted">${mga(p.priceMga)}${l.current && p.variants?.length ? ' · ' : ''}</span>${l.current ? chips(p.variants || []) : ''}</span></span><span style="text-align:right"><b>${p.sold} vendu${p.sold > 1 ? 's' : ''}</b>${p.pending ? `<br><span class="muted">${p.pending} en attente</span>` : ''}</span></div>`).join('') || '<div class="vempty">Aucun produit pour cette vente.</div>';
+  return d.customers.map((c) => `<div class="vline clickrow" style="cursor:pointer" onclick="show('clients');openClient('${vdCustomerKey(c.name)}')"><span class="row" style="margin:0;flex-wrap:nowrap;gap:12px"><span class="avatar">${esc(initials(c.name))}</span><b>${esc(c.name)}</b></span><span><span class="muted">${c.quantity} article${c.quantity > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') || '<div class="vempty">Aucun client confirmé pour l’instant.</div>';
+}
+function vdReason(i) {
+  const r = String(i.reason || '');
+  if (i.status === 'WAITLISTED' || r.includes('stock')) return 'Stock épuisé : choisissez une autre taille ou couleur';
+  if (r.includes('code_without_quantity') || r.includes('variante non précisée')) return 'Taille ou couleur non précisée';
+  if (r.includes('variante') && r.includes('inconnue')) return 'Taille ou couleur inconnue';
+  if (r.includes('produit inconnu') || r.includes('parent') || r.includes('deviné')) return 'Produit non reconnu';
+  if (r.startsWith('ambigu')) return 'Commentaire ambigu';
+  return r || 'À vérifier';
+}
+function vdSizeOpts(p, cur) {
+  const vs = p?.variants || [];
+  if (!vs.length) return '<option value="">—</option>';
+  return vs.map((v) => { const av = S.stock.find((s) => s.code === p.code)?.variants.find((x) => x.label === v.label)?.available ?? 0; return `<option value="${esc(v.label)}"${v.label === cur ? ' selected' : ''}>${esc(v.label)} · ${av}</option>`; }).join('');
+}
+function vdSizes(sel) { const p = S.products.find((x) => x.code === sel.value); sel.parentElement.querySelector('.sz').innerHTML = vdSizeOpts(p); }
+async function vdValidate(id, btn) {
+  const row = btn.closest('.vrow'), code = row.querySelector('.pr').value, variant = row.querySelector('.sz').value || undefined;
+  if (!code) { toast('Choisissez d’abord le produit'); return; }
+  const it = (VD.d.toValidate || []).find((x) => x.id === id);
+  const r = await api(`/api/intents/${id}/resolve`, { action: 'accept', code, variant, quantity: it?.quantity || 1 });
+  toast(r && r.status === 'RESERVED' ? 'Commande validée' : 'Pas assez de stock : mise en liste d’attente');
+  openLive(VD.id);
+}
+async function vdIgnore(id) { await api(`/api/intents/${id}/resolve`, { action: 'reject' }); toast('Commentaire ignoré'); openLive(VD.id); }
 
 // ---------- Clients
 var clSortKey = 'recent', clTimer;

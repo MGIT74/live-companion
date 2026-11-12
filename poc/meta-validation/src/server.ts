@@ -223,7 +223,7 @@ app.get('/api/stats', wrap((req) => {
   const to = req.query.to ? new Date(String(req.query.to)) : new Date();
   const from = req.query.from ? new Date(String(req.query.from)) : new Date(to.getTime() - 30 * 86_400_000);
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from >= to) throw new Error('Période invalide');
-  if (to.getTime() - from.getTime() > 400 * 86_400_000) throw new Error('Période trop longue (400 jours maximum)');
+  if (to.getTime() - from.getTime() > 4000 * 86_400_000) throw new Error('Période trop longue');
   return periodStats(from, to, Number(req.query.tz ?? 0) || 0);
 }));
 app.get('/api/lives/history', wrap(() => livesHistory()));

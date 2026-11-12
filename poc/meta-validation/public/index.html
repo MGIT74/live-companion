@@ -169,6 +169,52 @@
   .ok-msg { padding:10px 12px; border-radius:10px; background:var(--green-bg); color:var(--green); font-size:14px; }
   .ok-msg:empty { display:none; }
   [hidden] { display:none !important; }
+  /* Sélecteur de période */
+  .dp-wrap { position:relative; }
+  .dp-trigger { min-height:48px; padding:0 16px; border-radius:12px; background:var(--card); box-shadow:var(--shadow); border:2px solid transparent; font-size:16px; font-weight:500; gap:10px; justify-content:flex-start; }
+  .dp-trigger[aria-expanded="true"] { border-color:var(--accent); }
+  .dp-trigger svg { color:var(--muted); }
+  .dp { position:absolute; top:calc(100% + 10px); left:0; z-index:50; display:flex; background:var(--card); border:1px solid var(--sep); border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; max-width:calc(100vw - 32px); }
+  .dp-presets { display:flex; flex-direction:column; gap:2px; padding:12px; border-right:1px solid var(--sep); min-width:220px; }
+  .dp-presets button { justify-content:flex-start; background:transparent; font-weight:500; font-size:15px; min-height:40px; border-radius:10px; }
+  .dp-presets button:hover { background:var(--fill); }
+  .dp-presets button[aria-pressed="true"] { background:var(--soft); color:var(--accent); font-weight:600; }
+  .dp-main { display:flex; flex-direction:column; min-width:0; }
+  .dp-cals { display:flex; gap:28px; padding:18px 22px 10px; }
+  .dp-cal { width:280px; }
+  .dp-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .dp-head select { min-height:38px; padding:4px 10px; font-weight:600; font-size:15px; border-radius:10px; }
+  .dp-head .sp { flex:1; }
+  .dp-nav { min-height:38px; width:38px; padding:0; background:transparent; color:var(--accent); font-size:22px; }
+  .dp-grid { display:grid; grid-template-columns:repeat(7,1fr); row-gap:4px; text-align:center; }
+  .dp-grid .wd { font-size:12px; color:var(--muted); padding:4px 0 6px; }
+  .dp-day { position:relative; min-height:38px; padding:0; border-radius:10px; background:transparent; font-weight:500; font-size:15px; color:var(--ink); }
+  .dp-day.out { color:var(--muted); opacity:.55; }
+  .dp-day.in { background:var(--soft); border-radius:0; }
+  .dp-day.start, .dp-day.end { background:var(--accent); color:#fff; opacity:1; }
+  .dp-day.start { border-radius:10px 0 0 10px; } .dp-day.end { border-radius:0 10px 10px 0; } .dp-day.start.end { border-radius:10px; }
+  .dp-day.today::after { content:""; position:absolute; bottom:5px; left:50%; width:4px; height:4px; margin-left:-2px; border-radius:50%; background:currentColor; }
+  .dp-day:hover:not(.start):not(.end) { background:var(--fill2); }
+  .dp-day:disabled { opacity:.25; cursor:default; }
+  .dp-foot { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 22px; border-top:1px solid var(--sep); margin-top:auto; }
+  .dp-label { color:var(--muted); font-size:15px; flex:1 1 160px; }
+  .dp-times { display:flex; gap:10px; }
+  .dp-times label { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--muted); }
+  .dp-times input { min-height:38px; padding:4px 8px; }
+  .dp-actions { display:flex; gap:10px; }
+  .dp-next-sm { display:none; }
+  .dp-cancel { background:transparent; box-shadow:inset 0 0 0 1px var(--line); }
+  @media (max-width: 860px) {
+    .dp { position:fixed; left:8px; right:8px; top:auto; bottom:calc(70px + env(safe-area-inset-bottom)); flex-direction:column; max-height:78vh; overflow-y:auto; }
+    .dp-presets { flex-direction:row; overflow-x:auto; border-right:0; border-bottom:1px solid var(--sep); min-width:0; padding:10px; }
+    .dp-presets button { flex:none; background:var(--fill); }
+    .dp-cals { padding:14px; }
+    .dp-cal { width:100%; }
+    .dp-cal + .dp-cal { display:none; }
+    .dp-next-sm { display:inline-flex; }
+    .dp-foot { padding:12px 14px; }
+    .dp-actions { width:100%; } .dp-actions button { flex:1; }
+  }
   .bars { display:flex; align-items:flex-end; gap:4px; height:190px; padding-top:6px; }
   .bars .b { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100%; font-size:11px; color:var(--muted); }
   .bars .b i { display:block; width:100%; max-width:30px; min-height:3px; border-radius:6px 6px 3px 3px; background:var(--soft); }
@@ -205,8 +251,6 @@
     .hide-sm { display:none; }
     .kpis.k8 { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .kpis.k8 .kpi .v { font-size:20px; }
-    #stSeg { overflow-x:auto; max-width:100%; flex-wrap:nowrap; scrollbar-width:none; }
-    #stSeg button { flex:none; }
     .range input { min-width:0; width:100%; }
     .range label { flex:1 1 140px; }
   }
@@ -246,17 +290,26 @@
     <!-- ================= Statistiques ================= -->
     <section class="view" id="v-stats" aria-label="Statistiques">
       <div class="top"><div><h1>Statistiques</h1><div class="muted" style="font-size:15px;margin-top:4px" id="stPeriodLabel"></div></div></div>
-      <div class="card" style="padding:14px 16px">
-        <div class="row" style="margin:0;justify-content:space-between">
-          <div class="seg" role="group" aria-label="Période" id="stSeg">
-            <button type="button" data-r="today">Aujourd’hui</button><button type="button" data-r="yesterday">Hier</button><button type="button" data-r="7d">7 jours</button><button type="button" data-r="30d">30 jours</button><button type="button" data-r="month">Ce mois</button><button type="button" data-r="custom">Personnalisé</button>
+      <div class="dp-wrap">
+        <span class="muted" style="display:block;margin-bottom:6px">Période</span>
+        <button type="button" class="dp-trigger" id="dpTrigger" aria-haspopup="dialog" aria-expanded="false" onclick="dpOpen()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          <span id="dpTriggerLabel">…</span>
+        </button>
+        <div class="dp" id="dp" role="dialog" aria-label="Choisir une période" hidden>
+          <div class="dp-presets" id="dpPresets"></div>
+          <div class="dp-main">
+            <div class="dp-cals" id="dpCals"></div>
+            <div class="dp-foot">
+              <span id="dpLabel" class="dp-label"></span>
+              <div class="dp-times">
+                <label>de <input type="time" id="dpFromT" value="00:00"></label>
+                <label>à <input type="time" id="dpToT" value="23:59"></label>
+              </div>
+              <div class="dp-actions"><button type="button" class="primary" onclick="dpApply()">Appliquer</button><button type="button" class="dp-cancel" onclick="dpClose()">Annuler</button></div>
+            </div>
           </div>
         </div>
-        <form class="range" id="stCustom" hidden style="margin-top:12px" onsubmit="event.preventDefault(); loadStats('custom')">
-          <label>Du<input type="datetime-local" id="stFrom" required></label>
-          <label>Au<input type="datetime-local" id="stTo" required></label>
-          <button class="primary">Afficher</button>
-        </form>
       </div>
       <div class="kpis k8">
         <div class="card kpi"><span class="l">Chiffre d’affaires</span><span class="v" id="kRev">…</span><span class="h">ventes confirmées</span></div>
@@ -849,19 +902,133 @@ async function deleteProduct() {
 }
 
 // ---------- Statistiques
-var stRange = (() => { try { return localStorage.getItem('lc.statRange') || '7d'; } catch (e) { return '7d'; } })();
 const pad = (n) => String(n).padStart(2, '0');
-const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-function rangeDates(r) {
-  const now = new Date(), start = new Date(now); start.setHours(0, 0, 0, 0);
-  if (r === 'today') return [start, now];
-  if (r === 'yesterday') { const y = new Date(start); y.setDate(y.getDate() - 1); return [y, start]; }
-  if (r === '7d') { const f = new Date(start); f.setDate(f.getDate() - 6); return [f, now]; }
-  if (r === '30d') { const f = new Date(start); f.setDate(f.getDate() - 29); return [f, now]; }
-  if (r === 'month') { const f = new Date(start); f.setDate(1); return [f, now]; }
-  const f = new Date(q('#stFrom').value), t = new Date(q('#stTo').value);
-  return [f, t];
+const MONTHS = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+const PRESETS = [
+  ['today', 'Aujourd’hui'], ['yesterday', 'Hier'], ['week', 'Cette semaine'], ['7d', '7 derniers jours'], ['30d', '30 derniers jours'],
+  ['month', 'Mois en cours'], ['lastMonth', 'Mois dernier'], ['year', 'Cette année'], ['all', 'Toutes les dates'],
+];
+const day0 = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const sameDay = (a, b) => a && b && a.getTime() === b.getTime();
+function presetRange(k) {
+  const t = day0(new Date());
+  switch (k) {
+    case 'today': return [t, t];
+    case 'yesterday': return [addDays(t, -1), addDays(t, -1)];
+    case 'week': return [addDays(t, -((t.getDay() + 6) % 7)), t];
+    case '7d': return [addDays(t, -6), t];
+    case '30d': return [addDays(t, -29), t];
+    case 'month': return [new Date(t.getFullYear(), t.getMonth(), 1), t];
+    case 'lastMonth': return [new Date(t.getFullYear(), t.getMonth() - 1, 1), new Date(t.getFullYear(), t.getMonth(), 0)];
+    case 'year': return [new Date(t.getFullYear(), 0, 1), t];
+    case 'all': return [new Date(2024, 0, 1), t];
+  }
 }
+/** Période appliquée (gardée entre deux visites) et brouillon en cours dans la fenêtre. */
+var PR = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem('lc.period') || 'null');
+    if (v && v.key !== 'custom') { const [a, b] = presetRange(v.key) || presetRange('7d'); return { ...v, start: a, end: b }; }
+    if (v) return { ...v, start: new Date(v.start), end: new Date(v.end) };
+  } catch (e) {}
+  const [a, b] = presetRange('7d'); return { key: '7d', start: a, end: b, fromT: '00:00', toT: '23:59' };
+})();
+var DR = null; // brouillon : { key, start, end|null, view: Date(1er du mois de gauche), hover }
+function fmtRange(a, b) {
+  const y = (d) => d.getFullYear();
+  const dm = (d, yr) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', ...(yr ? { year: 'numeric' } : {}) });
+  if (!b || sameDay(a, b)) return dm(a, true);
+  if (a.getMonth() === b.getMonth() && y(a) === y(b)) return `${a.getDate()} – ${dm(b, true)}`;
+  return `${dm(a, y(a) !== y(b))} – ${dm(b, true)}`;
+}
+function periodText(p) {
+  const name = p.key !== 'custom' ? PRESETS.find((x) => x[0] === p.key)?.[1] : '';
+  const hours = p.fromT !== '00:00' || p.toT !== '23:59' ? ` · ${p.fromT.replace(':', ' h ')} – ${p.toT.replace(':', ' h ')}` : '';
+  return (name ? `${name} · ` : '') + fmtRange(p.start, p.end) + hours;
+}
+function rangeBounds(p) {
+  const [fh, fm] = p.fromT.split(':').map(Number), [th, tm] = p.toT.split(':').map(Number);
+  const from = new Date(p.start); from.setHours(fh, fm, 0, 0);
+  const to = new Date(p.end); to.setHours(th, tm, 0, 0); to.setMinutes(to.getMinutes() + 1); // fin incluse
+  return [from, to];
+}
+function dpOpen() {
+  DR = { key: PR.key, start: PR.start, end: PR.end, view: new Date(PR.end.getFullYear(), PR.end.getMonth() - 1, 1), hover: null };
+  if (window.matchMedia('(max-width: 860px)').matches) DR.view = new Date(PR.end.getFullYear(), PR.end.getMonth(), 1);
+  q('#dpFromT').value = PR.fromT; q('#dpToT').value = PR.toT;
+  q('#dp').hidden = false; q('#dpTrigger').setAttribute('aria-expanded', 'true');
+  dpRender();
+}
+function dpClose() { q('#dp').hidden = true; q('#dpTrigger').setAttribute('aria-expanded', 'false'); DR = null; }
+function dpApply() {
+  if (!DR) return;
+  const end = DR.end || DR.start;
+  PR = { key: DR.key, start: DR.start, end, fromT: q('#dpFromT').value || '00:00', toT: q('#dpToT').value || '23:59' };
+  const [from, to] = rangeBounds(PR);
+  if (!(from < to)) { toast('L’heure de fin doit être après l’heure de début', true); return; }
+  try { localStorage.setItem('lc.period', JSON.stringify({ ...PR, start: PR.start.toISOString(), end: PR.end.toISOString() })); } catch (e) {}
+  dpClose(); loadStats();
+}
+function dpPreset(k) {
+  const [a, b] = presetRange(k);
+  DR.key = k; DR.start = a; DR.end = b;
+  DR.view = window.matchMedia('(max-width: 860px)').matches ? new Date(b.getFullYear(), b.getMonth(), 1) : new Date(b.getFullYear(), b.getMonth() - 1, 1);
+  q('#dpFromT').value = '00:00'; q('#dpToT').value = '23:59';
+  dpRender();
+}
+function dpPick(ts) {
+  const d = new Date(ts);
+  DR.key = 'custom';
+  if (!DR.start || DR.end) { DR.start = d; DR.end = null; }
+  else if (d < DR.start) { DR.start = d; }
+  else DR.end = d;
+  dpRender();
+}
+function dpView(offset) { DR.view = new Date(DR.view.getFullYear(), DR.view.getMonth() + offset, 1); dpRender(); }
+function dpSetMonth(i, m, y) { DR.view = new Date(y, m - i, 1); dpRender(); }
+function dpCal(i) {
+  const first = new Date(DR.view.getFullYear(), DR.view.getMonth() + i, 1);
+  const m = first.getMonth(), y = first.getFullYear(), today = day0(new Date());
+  const lead = (first.getDay() + 6) % 7;
+  const gridStart = addDays(first, -lead);
+  const end = DR.end || (DR.hover && DR.start && DR.hover > DR.start ? DR.hover : null);
+  const years = []; for (let yy = 2024; yy <= today.getFullYear(); yy++) years.push(yy);
+  const head = `<div class="dp-head">
+      ${i === 0 ? '<button type="button" class="dp-nav" onclick="dpView(-1)" aria-label="Mois précédent">‹</button>' : '<span class="sp"></span>'}
+      <select aria-label="Mois" onchange="dpSetMonth(${i}, +this.value, ${y})">${MONTHS.map((n, k) => `<option value="${k}" ${k === m ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <select aria-label="Année" onchange="dpSetMonth(${i}, ${m}, +this.value)">${years.map((yy) => `<option ${yy === y ? 'selected' : ''}>${yy}</option>`).join('')}</select>
+      ${i === 1 ? '<button type="button" class="dp-nav" onclick="dpView(1)" aria-label="Mois suivant">›</button>' : '<span class="sp"></span><button type="button" class="dp-nav dp-next-sm" onclick="dpView(1)" aria-label="Mois suivant">›</button>'}
+    </div>`;
+  let cells = ['lu', 'ma', 'me', 'je', 've', 'sa', 'di'].map((w) => `<span class="wd">${w}</span>`).join('');
+  for (let k = 0; k < 42; k++) {
+    const d = addDays(gridStart, k);
+    if (k >= 35 && d.getMonth() !== m) break;
+    const cls = ['dp-day'];
+    if (d.getMonth() !== m) cls.push('out');
+    if (sameDay(d, today)) cls.push('today');
+    if (sameDay(d, DR.start)) cls.push('start');
+    if (sameDay(d, end) || (!end && sameDay(d, DR.start))) cls.push('end');
+    if (DR.start && end && d > DR.start && d < end) cls.push('in');
+    cells += `<button type="button" class="${cls.join(' ')}" ${d > today ? 'disabled' : ''} data-ts="${d.getTime()}" aria-label="${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}">${d.getDate()}</button>`;
+  }
+  return `<div class="dp-cal">${head}<div class="dp-grid">${cells}</div></div>`;
+}
+function dpRender() {
+  q('#dpPresets').innerHTML = PRESETS.map(([k, l]) => `<button type="button" aria-pressed="${DR.key === k}" onclick="dpPreset('${k}')">${l}</button>`).join('');
+  q('#dpCals').innerHTML = dpCal(0) + dpCal(1);
+  q('#dpLabel').textContent = DR.end ? fmtRange(DR.start, DR.end) : `${fmtRange(DR.start)} – choisissez le dernier jour`;
+}
+q('#dpCals').addEventListener('click', (e) => { const b = e.target.closest('.dp-day'); if (b && !b.disabled) dpPick(+b.dataset.ts); });
+q('#dpCals').addEventListener('mouseover', (e) => {
+  const b = e.target.closest('.dp-day');
+  if (!b || !DR || DR.end || !DR.start) return;
+  DR.hover = new Date(+b.dataset.ts);
+  q('#dpCals').querySelectorAll('.dp-day').forEach((x) => { const t = +x.dataset.ts; x.classList.toggle('in', t > DR.start.getTime() && t < DR.hover.getTime()); });
+});
+document.addEventListener('mousedown', (e) => { if (DR && !e.target.closest('.dp-wrap')) dpClose(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && DR) dpClose(); });
+const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 function bars(el, points, labelEvery = 1) {
   const max = Math.max(1, ...points.map((p) => p.v));
   el.innerHTML = points.map((p, i) => `<div class="b ${p.v ? 'has' : ''}" title="${esc(p.title)}"><i style="height:${Math.round(p.v / max * 100)}%"></i><span>${i % labelEvery === 0 ? esc(p.label) : '&nbsp;'}</span></div>`).join('');
@@ -881,35 +1048,30 @@ function livesTable(list, emptyText) {
     list.map((l) => `<tr class="clickrow" onclick="openLive('${esc(l.id)}')"><td><b style="color:var(--ink)">${esc(l.name)}</b> ${l.current ? '<span class="pill live-on">EN COURS</span>' : ''}<br><span class="muted">${livePeriod(l)}</span></td>
       <td class="hide-sm">${l.comments}</td><td>${l.reservations}</td><td>${l.confirmed}${l.confirmationRate != null ? ` <span class="muted">(${l.confirmationRate} %)</span>` : ''}</td><td class="hide-sm">${l.customers}</td><td><b style="color:var(--ink)">${mga(l.revenueMga)}</b>${l.pendingMga ? `<br><span class="muted">+ ${mga(l.pendingMga)} en attente</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
 }
-async function loadStats(r) {
-  if (r) stRange = r;
-  try { localStorage.setItem('lc.statRange', stRange); } catch (e) {}
-  document.querySelectorAll('#stSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.r === stRange)));
-  q('#stCustom').hidden = stRange !== 'custom';
-  if (stRange === 'custom' && (!q('#stFrom').value || !q('#stTo').value)) {
-    const [f] = rangeDates('7d'); const t = new Date(); t.setHours(23, 59, 0, 0);
-    q('#stFrom').value = toLocalInput(f); q('#stTo').value = toLocalInput(t);
-    if (!r) return;
-  }
-  const [from, to] = rangeDates(stRange);
-  if (!(from < to)) { toast('Choisissez une date de début avant la date de fin', true); return; }
-  q('#stPeriodLabel').textContent = `Du ${dt(from)} au ${dt(to)}`;
+async function loadStats() {
+  if (PR.key !== 'custom') { const [a, b] = presetRange(PR.key); PR.start = a; PR.end = b; } // « Aujourd'hui » reste aujourd'hui
+  const [from, to] = rangeBounds(PR);
+  q('#dpTriggerLabel').textContent = periodText(PR);
+  q('#stPeriodLabel').textContent = '';
   const d = await get(`/api/stats?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&tz=${new Date().getTimezoneOffset()}`);
   const t = d.totals;
   q('#kRev').textContent = mga(t.revenueMga); q('#kPend').textContent = mga(t.pendingMga);
   q('#kOrd').textContent = t.orders; q('#kItems').textContent = `${t.itemsSold} article${t.itemsSold > 1 ? 's' : ''} vendu${t.itemsSold > 1 ? 's' : ''}`;
   q('#kCust').textContent = t.customers; q('#kBasket').textContent = t.customers ? `panier moyen ${mga(t.averageBasketMga)}` : '';
   q('#kRate').textContent = t.confirmationRate != null ? `${t.confirmationRate} % des réservations confirmées` : '';
-  const hourMode = d.series.unit === 'hour';
-  q('#stSeriesTitle').textContent = hourMode ? 'Chiffre d’affaires par heure' : 'Chiffre d’affaires par jour';
-  const pts = d.series.points.map((p) => ({ v: p.revenueMga, label: hourMode ? p.label.replace(' h', '') : String(Number(p.label.slice(8))), title: `${hourMode ? p.label : new Date(p.label).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} : ${mga(p.revenueMga)} (${p.orders} commande${p.orders > 1 ? 's' : ''})` }));
+  const hourMode = d.series.unit === 'hour', monthMode = d.series.unit === 'month';
+  q('#stSeriesTitle').textContent = hourMode ? 'Chiffre d’affaires par heure' : monthMode ? 'Chiffre d’affaires par mois' : 'Chiffre d’affaires par jour';
+  const pts = d.series.points.map((p) => {
+    const label = hourMode ? p.label.replace(' h', '') : monthMode ? MONTHS[Number(p.label.slice(5)) - 1].replace('.', '') : String(Number(p.label.slice(8)));
+    const long = hourMode ? p.label : monthMode ? `${MONTHS[Number(p.label.slice(5)) - 1]} ${p.label.slice(0, 4)}` : new Date(p.label).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+    return { v: p.revenueMga, label, title: `${long} : ${mga(p.revenueMga)} (${p.orders} commande${p.orders > 1 ? 's' : ''})` };
+  });
   bars(q('#stSeries'), pts, hourMode ? 3 : Math.ceil(pts.length / 15));
   bars(q('#stHours'), d.byHour.map((h) => ({ v: h.revenueMga, label: String(h.hour), title: `${h.hour} h – ${h.hour + 1} h : ${mga(h.revenueMga)} (${h.orders} commande${h.orders > 1 ? 's' : ''})` })), 3);
   q('#stProducts').innerHTML = d.topProducts.length ? d.topProducts.map((p) => `<div class="pl" style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><span class="code">${esc(p.code)}</span> ${esc(p.name)}</span><span><span class="muted">${p.quantity} vendu${p.quantity > 1 ? 's' : ''} · </span><b>${mga(p.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucune vente confirmée sur la période.</div>';
   q('#stCustomers').innerHTML = d.topCustomers.length ? d.topCustomers.map((c) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--sep)"><span><b>${esc(c.name)}</b></span><span><span class="muted">${c.orders} commande${c.orders > 1 ? 's' : ''} · </span><b>${mga(c.revenueMga)}</b></span></div>`).join('') : '<div class="empty">Aucun client sur la période.</div>';
   q('#stLives').innerHTML = livesTable(d.lives, 'Aucun live sur la période.');
 }
-document.querySelectorAll('#stSeg button').forEach((b) => b.addEventListener('click', () => loadStats(b.dataset.r)));
 
 // ---------- Lives passés
 async function loadLives() {

@@ -160,9 +160,16 @@ export async function periodStats(from: Date, to: Date, tzOffsetMin: number) {
 
   const spanDays = (to.getTime() - from.getTime()) / 86_400_000;
   const byHourMode = spanDays <= 1.01;
+  const byMonthMode = spanDays > 92; // longues périodes : un bâton par mois
   const buckets = new Map<string, { label: string; revenueMga: number; orders: number }>();
   if (byHourMode) {
     for (let h = 0; h < 24; h++) buckets.set(String(h), { label: `${h} h`, revenueMga: 0, orders: 0 });
+  } else if (byMonthMode) {
+    const a = local(from), b = local(to);
+    for (let y = a.getUTCFullYear(), m = a.getUTCMonth(); y < b.getUTCFullYear() || (y === b.getUTCFullYear() && m <= b.getUTCMonth()); m === 11 ? (y++, m = 0) : m++) {
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      buckets.set(key, { label: key, revenueMga: 0, orders: 0 });
+    }
   } else {
     for (let t = local(from).getTime(); t < local(to).getTime(); t += 86_400_000) {
       const key = new Date(t).toISOString().slice(0, 10);
@@ -174,7 +181,7 @@ export async function periodStats(from: Date, to: Date, tzOffsetMin: number) {
   const customers = new Map<string, { name: string; orders: number; revenueMga: number }>();
   for (const x of confirmed) {
     const l = local(when(x));
-    const key = byHourMode ? String(l.getUTCHours()) : l.toISOString().slice(0, 10);
+    const key = byHourMode ? String(l.getUTCHours()) : byMonthMode ? l.toISOString().slice(0, 7) : l.toISOString().slice(0, 10);
     const b = buckets.get(key);
     if (b) { b.revenueMga += x.amount; b.orders++; }
     const hr = hours[new Date(local(new Date(x.at)).getTime()).getUTCHours()];
@@ -205,7 +212,7 @@ export async function periodStats(from: Date, to: Date, tzOffsetMin: number) {
       confirmationRate: decided ? Math.round((confirmed.length / decided) * 1000) / 10 : null,
       lives: lives.length,
     },
-    series: { unit: byHourMode ? 'hour' : 'day', points: [...buckets.values()] },
+    series: { unit: byHourMode ? 'hour' : byMonthMode ? 'month' : 'day', points: [...buckets.values()] },
     byHour: hours,
     topProducts: [...products.values()].sort((a, b) => b.revenueMga - a.revenueMga).slice(0, 8),
     topCustomers: [...customers.values()].sort((a, b) => b.revenueMga - a.revenueMga).slice(0, 8),

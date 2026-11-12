@@ -1528,8 +1528,8 @@ function showPay(dismissible) {
   const el = q('#lockScreen'); el.hidden = false; el.dataset.dismissible = dismissible ? '1' : '';
   const mmKey = (m) => m.split(' ')[0];
   const mmTag = { MVola: 'MV', Orange: 'OM', Airtel: 'AM' };
-  const head = a.status === 'suspended' ? ['red', 'Votre compte est suspendu', `Vos ventes, commandes et clients sont conservés. ${a.reason ? 'Motif : ' + a.reason + '. ' : ''}Contactez le support pour le réactiver.`]
-    : a.status === 'expired' ? ['red', 'Votre abonnement est terminé', `Il a pris fin le ${dateFr(a.paidUntil)}. Vos ventes, commandes et clients sont conservés : payez pour tout retrouver.`]
+  const head = a.status === 'suspended' ? ['red', 'Activez votre compte', `Vos ventes, commandes et clients sont conservés. ${a.reason ? 'Motif : ' + a.reason + '. ' : ''}Contactez le support pour le réactiver.`]
+    : a.status === 'expired' ? ['red', 'Activez votre compte', `Il a pris fin le ${dateFr(a.paidUntil)}. Vos ventes, commandes et clients sont conservés : payez pour tout retrouver.`]
     : a.status === 'pending' ? ['', 'Votre compte est presque prêt', p.lockMessage]
     : ['', 'Renouveler l’abonnement', `Payez avant le ${dateFr(a.paidUntil)} pour ne pas être interrompu en plein live.`];
   const msg = `Bonjour, voici la référence de mon paiement Live Companion pour la boutique « ${ME.shopName} » : `;

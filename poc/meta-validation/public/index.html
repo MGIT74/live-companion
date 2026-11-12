@@ -226,6 +226,31 @@
     <!-- ================= Régie ================= -->
     <section class="view" id="v-regie" aria-label="Régie live">
       <h1>Régie live</h1>
+      <div class="card">
+        <div class="card-head"><div><h2>Suivre un live ou une publication</h2><span class="muted" id="followNow">Choisissez le live (ou la publication) dont il faut lire les commentaires.</span></div></div>
+        <div class="row">
+          <button class="primary" onclick="detectLive()">Détecter le live en cours</button>
+          <button onclick="listPosts()">Pas de live ? Utiliser une publication</button>
+        </div>
+        <div id="lives" class="muted"></div>
+        <div id="posts" class="muted"></div>
+        <details style="margin-top:10px">
+          <summary>Réglages de lecture des commentaires</summary>
+          <div class="row">
+            <input id="manualLive" placeholder="id du live_video" style="flex:1 1 220px" aria-label="Identifiant du live">
+            <button onclick="api('/api/lives/select',{id:val('manualLive')})">Utiliser cet id</button>
+          </div>
+          <div class="row">
+            <select id="target" aria-label="Objet lu"><option value="live">objet live_video</option><option value="video">objet video</option></select>
+            <button onclick="api('/api/ingestion/poll/once',{target:val('target')})">Lire une fois</button>
+            <button onclick="api('/api/ingestion/poll/start',{target:val('target'),intervalMs:5000})">▶ Lecture toutes les 5 s</button>
+            <button onclick="api('/api/ingestion/poll/stop')">■ Arrêter</button>
+            <button onclick="api('/api/ingestion/sse/start',{target:val('target')})">▶ Temps réel</button>
+            <button onclick="api('/api/ingestion/sse/stop')">■ Arrêter</button>
+          </div>
+          <div id="ingest" class="muted"></div>
+        </details>
+      </div>
       <div class="card onb" id="onboard" hidden></div>
       <div class="kpis">
         <div class="card kpi"><span class="l">Commentaires</span><span class="v" id="kComments">0</span></div>
@@ -266,31 +291,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head"><h2>Suivre un live</h2><span class="muted">Choisissez le live (ou une publication) dont il faut lire les commentaires.</span></div>
-        <div class="row">
-          <button class="primary" onclick="detectLive()">Détecter le live en cours</button>
-          <button onclick="listPosts()">Pas de live ? Utiliser une publication</button>
-        </div>
-        <div id="lives" class="muted"></div>
-        <div id="posts" class="muted"></div>
-        <details style="margin-top:10px">
-          <summary>Réglages de lecture des commentaires</summary>
-          <div class="row">
-            <input id="manualLive" placeholder="id du live_video" style="flex:1 1 220px" aria-label="Identifiant du live">
-            <button onclick="api('/api/lives/select',{id:val('manualLive')})">Utiliser cet id</button>
-          </div>
-          <div class="row">
-            <select id="target" aria-label="Objet lu"><option value="live">objet live_video</option><option value="video">objet video</option></select>
-            <button onclick="api('/api/ingestion/poll/once',{target:val('target')})">Lire une fois</button>
-            <button onclick="api('/api/ingestion/poll/start',{target:val('target'),intervalMs:5000})">▶ Lecture toutes les 5 s</button>
-            <button onclick="api('/api/ingestion/poll/stop')">■ Arrêter</button>
-            <button onclick="api('/api/ingestion/sse/start',{target:val('target')})">▶ Temps réel</button>
-            <button onclick="api('/api/ingestion/sse/stop')">■ Arrêter</button>
-          </div>
-          <div id="ingest" class="muted"></div>
-        </details>
-      </div>
     </section>
 
     <!-- ================= Réservations ================= -->
@@ -608,6 +608,9 @@ function render() {
     : subOk ? `<span class="pill OK">Messenger actif</span> <span class="muted">Vérifié ${ago(sub.checkedAt)}. Rien à faire : l’activation est automatique.</span>`
     : `<span class="pill PARTIEL">Messenger inactif</span> <span class="muted">${sub?.error ? esc(sub.error) : 'Les messages des clients n’arrivent pas.'}</span>`;
   renderOnboarding(subOk);
+  q('#followNow').innerHTML = S.activeLive
+    ? `Suivi en ce moment : <b style="color:var(--ink)">${esc(S.activeLive.title || S.activeLive.id)}</b>. Pour en changer, détectez le live ou choisissez une publication.`
+    : 'Choisissez le live (ou la publication) dont il faut lire les commentaires.';
   renderFacebook();
 
   // Chiffres

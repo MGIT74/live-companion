@@ -65,7 +65,10 @@
   button.chip.pick:hover { box-shadow:inset 0 0 0 1.5px var(--accent); }
   .qe { display:flex; gap:8px; flex-wrap:wrap; }
   .qe .fld { position:relative; flex:1 1 150px; min-width:0; }
-  .qe .fld input { width:100%; }
+  .qe .fld input { width:100%; padding-right:40px; }
+  .qe .clr { position:absolute; top:50%; right:6px; transform:translateY(-50%); width:30px; min-height:30px; height:30px; padding:0; border-radius:50%; background:var(--fill2); color:var(--muted); display:grid; place-items:center; }
+  .qe .clr:hover { background:var(--line); color:var(--ink); }
+  .qe .clr svg { width:12px; height:12px; }
   .sugg { position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:40; background:var(--card); border:1px solid var(--sep); border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.18); padding:6px; max-height:300px; overflow-y:auto; }
   .sugg button { display:flex; width:100%; justify-content:flex-start; align-items:center; gap:10px; text-align:left; background:transparent; min-height:44px; padding:6px 10px; border-radius:10px; font-weight:500; white-space:normal; }
   .sugg button[aria-selected="true"], .sugg button:hover { background:var(--soft); }
@@ -598,8 +601,8 @@
           <div class="card">
             <div class="card-head"><h2>Saisie rapide</h2></div>
             <form class="qe" onsubmit="event.preventDefault();addManual()" autocomplete="off">
-              <div class="fld"><input id="manualText" placeholder="JP01 2 M" aria-label="Commande : code, quantité, taille" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggText" autocomplete="off"><div class="sugg" id="suggText" role="listbox" hidden></div></div>
-              <div class="fld"><input id="manualName" placeholder="Nom du client" aria-label="Nom du client" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggName" autocomplete="off"><div class="sugg" id="suggName" role="listbox" hidden></div></div>
+              <div class="fld"><input id="manualText" placeholder="JP01 2 M" aria-label="Commande : code, quantité, taille" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggText" autocomplete="off"><button type="button" class="clr" data-clear="Text" aria-label="Effacer le produit" hidden><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button><div class="sugg" id="suggText" role="listbox" hidden></div></div>
+              <div class="fld"><input id="manualName" placeholder="Nom du client" aria-label="Nom du client" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggName" autocomplete="off"><button type="button" class="clr" data-clear="Name" aria-label="Effacer le nom du client" hidden><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button><div class="sugg" id="suggName" role="listbox" hidden></div></div>
               <button class="primary" type="submit">Ajouter</button>
             </form>
             <div class="qe-tip">Touchez un code produit (ou une taille) pour le mettre ici. Le nom est proposé dès 3 lettres.</div>
@@ -953,7 +956,7 @@ const plain = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').to
 function pickCode(code, variant) {
   const t = q('#manualText');
   const qty = (t.value.trim().split(/\s+/)[0] || '').toUpperCase() === code ? (t.value.trim().split(/\s+/).find((w, i) => i > 0 && /^\d+$/.test(w)) || '1') : '1';
-  t.value = variant ? `${code} ${qty} ${variant}` : `${code} `;
+  t.value = variant ? `${code} ${qty} ${variant}` : `${code} `; syncClear();
   if (window.matchMedia('(max-width: 860px)').matches) t.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (variant) { hideSugg('Text'); const n = q('#manualName'); n.focus(); toast(`${code} ${variant} prêt : ajoutez le nom du client`); }
   else { t.focus(); t.setSelectionRange(t.value.length, t.value.length); suggestText(); }
@@ -1011,9 +1014,9 @@ function suggestName() {
 }
 function chooseSugg(which, k) {
   const it = SG[which].items[k]; if (!it) return;
-  if (which === 'Name') { q('#manualName').value = it.name; hideSugg('Name'); q('#manualName').closest('form').querySelector('[type=submit]').focus(); return; }
+  if (which === 'Name') { q('#manualName').value = it.name; syncClear(); hideSugg('Name'); q('#manualName').closest('form').querySelector('[type=submit]').focus(); return; }
   if (it.kind === 'product') { pickCode(it.code); return; }
-  q('#manualText').value = `${it.code} ${it.qty} ${it.variant}`; hideSugg('Text');
+  q('#manualText').value = `${it.code} ${it.qty} ${it.variant}`; syncClear(); hideSugg('Text');
   const n = q('#manualName'); if (!n.value.trim()) n.focus(); else n.closest('form').querySelector('[type=submit]').focus();
 }
 async function addManual() {
@@ -1021,10 +1024,18 @@ async function addManual() {
   if (!text) { q('#manualText').focus(); suggestText(); return; }
   hideSugg('Text'); hideSugg('Name');
   await api('/api/intents/manual', { text, name });
-  q('#manualText').value = ''; toast(`Commande ajoutée${name ? ' pour ' + name : ''}`);
+  q('#manualText').value = ''; syncClear(); toast(`Commande ajoutée${name ? ' pour ' + name : ''}`);
 }
+function syncClear() { for (const w of ['Text', 'Name']) q(`[data-clear="${w}"]`).hidden = !q('#manual' + w).value; }
 for (const which of ['Text', 'Name']) {
   const input = q('#manual' + which), box = q('#sugg' + which);
+  input.addEventListener('input', syncClear);
+  const clr = q(`[data-clear="${which}"]`);
+  clr.addEventListener('mousedown', (e) => e.preventDefault()); // le champ garde le focus
+  clr.addEventListener('click', () => {
+    input.value = ''; syncClear(); input.focus();
+    if (which === 'Text') suggestText(); else hideSugg('Name');
+  });
   input.addEventListener('input', which === 'Text' ? suggestText : suggestName);
   input.addEventListener('focus', () => { if (which === 'Text') suggestText(); else suggestName(); });
   input.addEventListener('blur', () => setTimeout(() => hideSugg(which), 150));

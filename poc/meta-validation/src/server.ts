@@ -10,7 +10,7 @@ import { ingestionStats, ingestionStatus, pollOnce, reparseComments, startPollin
 import { handleParsed, parseOptions, resolveIntent, stockSnapshot, findProduct } from './reservations.ts';
 import { sendManualMessage, sendPrivateReplyForIntent, sendSecondPrivateReply } from './messenger.ts';
 import { receiveWebhook, verifyWebhook } from './webhooks.ts';
-import { deleteProduct, moveProduct, removeProductPhoto, saveProduct, setProductPhoto } from './catalog.ts';
+import { deleteProduct, moveProduct, removeProductPhoto, reorderProducts, saveProduct, setProductPhoto } from './catalog.ts';
 import { checkSubscription, ensureSubscription } from './subscription.ts';
 import { allShopIds, archiveSession, currentShopId, flushAll, listSessions, loadShops, persist, recordTest, resetLiveData, runInShop, sessionSnapshot, shopForPage, state, TESTS, type TestStatus } from './store.ts';
 import { changePassword, clearSession, login, requireAccount, requireActive, signup, startImpersonation, stopImpersonation, updateProfile, usersCount } from './accounts.ts';
@@ -403,6 +403,7 @@ app.post('/api/products', wrap((req) => saveProduct(req.body)));
 app.post('/api/products/:code/delete', wrap((req) => { deleteProduct(req.params.code); }));
 app.post('/api/products/:code/photo', wrap((req) => setProductPhoto(req.params.code, req.body.dataUrl)));
 app.post('/api/products/:code/photo/delete', wrap((req) => removeProductPhoto(req.params.code)));
+app.post('/api/products/order', wrap((req) => { reorderProducts(req.body.codes); }));
 app.post('/api/products/:code/move', wrap((req) => { moveProduct(req.params.code, req.body.dir === 'up' ? 'up' : 'down'); }));
 
 // Produits / commentaire produit

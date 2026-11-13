@@ -304,7 +304,21 @@
   .field input { width:100%; min-width:0; }
   .vrow { display:flex; gap:8px; align-items:center; }
   .vrow input { min-width:0; }
-  .prod { display:flex; flex-direction:column; gap:10px; }
+  .show-sm { display:none; }
+  @media (max-width: 860px) { .show-sm { display:inline; } }
+  .prod { display:flex; flex-direction:column; gap:10px; transition:transform .18s ease, box-shadow .18s ease; cursor:grab; touch-action:pan-y; }
+  .prod:hover { transform:translateY(-3px); box-shadow:0 2px 4px rgba(0,0,0,.05), 0 14px 34px rgba(0,0,0,.12); }
+  .prod button, .prod a { cursor:pointer; }
+  .prod .grip { min-height:32px; width:32px; padding:0; border-radius:9px; background:transparent; color:var(--muted); cursor:grab; flex:none; touch-action:none; }
+  .prod .grip:hover { background:var(--fill); color:var(--ink); }
+  .prod.drag-src { opacity:.25; transform:none !important; box-shadow:none; outline:2px dashed var(--accent); outline-offset:-2px; }
+  .prod.drag-ghost { position:fixed; z-index:90; margin:0; pointer-events:none; cursor:grabbing; transform:rotate(1.5deg) scale(1.04) !important; box-shadow:0 30px 70px rgba(0,0,0,.28) !important; transition:none; }
+  .prod.drag-ghost.drop { transition:left .18s ease, top .18s ease, transform .18s ease; transform:none !important; }
+  .prod.press { transform:scale(.98); }
+  .prod.kb-moved { animation:kbflash .6s ease; }
+  @keyframes kbflash { from { box-shadow:0 0 0 3px var(--accent); } to { box-shadow:var(--shadow); } }
+  body.dragging, body.dragging * { cursor:grabbing !important; user-select:none !important; -webkit-user-select:none !important; }
+  @media (hover: none) { .prod:hover { transform:none; box-shadow:var(--shadow); } }
   .prods { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
   .photo { width:100%; aspect-ratio:4/3; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); font-size:13px; }
   .pthumb { position:relative; width:52px; height:52px; flex:none; border-radius:12px; background:var(--fill) center/cover no-repeat; display:grid; place-items:center; color:var(--muted); padding:0; min-height:0; }
@@ -657,7 +671,7 @@
     <!-- ================= Stock ================= -->
     <section class="view" id="v-stock" aria-label="Stock">
       <div class="top">
-        <div><h1>Produits et stock</h1><div class="muted" style="font-size:15px;margin-top:4px">L’ordre ci-dessous est l’ordre de passage pendant le live.</div></div>
+        <div><h1>Produits et stock</h1><div class="muted" style="font-size:15px;margin-top:4px">L’ordre ci-dessous est l’ordre de passage pendant le live. <span class="hide-sm">Glissez une carte pour le changer.</span><span class="show-sm">Restez appuyé sur une carte, puis glissez-la.</span></div></div>
         <button class="primary" onclick="openProduct()">+ Ajouter un produit</button>
       </div>
       <div id="stock" class="prods"></div>
@@ -948,6 +962,108 @@ function renderOnboarding(subOk) {
     }).join('')}</ol>`;
 }
 
+// ---------- Produits : changer l'ordre de passage en glissant les cartes
+// Souris : on glisse la carte. Téléphone : appui long puis on glisse (le défilement reste normal). Clavier : poignée + flèches.
+let DRAG = null;
+function stockCards() { return [...q('#stock').querySelectorAll('.prod[data-code]')]; }
+function flip(cards, before) {
+  cards.forEach((c) => {
+    const b = before.get(c); if (!b) return;
+    const a = c.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
+    if (!dx && !dy) return;
+    c.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  });
+}
+function moveCardTo(src, target, after) {
+  const cards = stockCards(), before = new Map(cards.map((c) => [c, c.getBoundingClientRect()]));
+  target.parentNode.insertBefore(src, after ? target.nextSibling : target);
+  flip(cards.filter((c) => c !== src), before);
+}
+function renumber() { stockCards().forEach((c, k) => { const n = c.querySelector('.num'); if (n) n.textContent = `n° ${k + 1}`; }); }
+async function saveOrder() {
+  const codes = stockCards().map((c) => c.dataset.code);
+  if (codes.join() === S.products.map((p) => p.code).join()) return;
+  S.products = codes.map((c) => S.products.find((p) => p.code === c));
+  renumber();
+  try { await api('/api/products/order', { codes }); toast('Ordre de passage enregistré'); } catch (e) { refresh(); }
+}
+function dragStart(card, x, y) {
+  const r = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('drag-ghost'); ghost.classList.remove('press');
+  Object.assign(ghost.style, { width: r.width + 'px', height: r.height + 'px', left: r.left + 'px', top: r.top + 'px' });
+  document.body.appendChild(ghost);
+  card.classList.add('drag-src'); document.body.classList.add('dragging');
+  DRAG = { card, ghost, dx: x - r.left, dy: y - r.top, x, y };
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+function dragMove(x, y) {
+  const d = DRAG; d.x = x; d.y = y;
+  d.ghost.style.left = x - d.dx + 'px'; d.ghost.style.top = y - d.dy + 'px';
+  const over = document.elementFromPoint(x, y)?.closest('.prod[data-code]');
+  if (over && over !== d.card) {
+    const r = over.getBoundingClientRect();
+    const sameRow = Math.abs(r.top - d.card.getBoundingClientRect().top) < 10;
+    const after = sameRow ? x > r.left + r.width / 2 : y > r.top + r.height / 2;
+    const idx = stockCards(), from = idx.indexOf(d.card), to = idx.indexOf(over);
+    if ((after && from !== to + 1) || (!after && from !== to - 1)) moveCardTo(d.card, over, after);
+  }
+  // Défilement automatique près des bords
+  const edge = 70;
+  d.scroll = y < edge ? -12 : y > innerHeight - edge ? 12 : 0;
+}
+function dragEnd(cancel) {
+  const d = DRAG; if (!d) return;
+  const r = d.card.getBoundingClientRect();
+  d.ghost.classList.add('drop'); d.ghost.style.left = r.left + 'px'; d.ghost.style.top = r.top + 'px';
+  setTimeout(() => {
+    d.ghost.remove(); d.card.classList.remove('drag-src'); document.body.classList.remove('dragging');
+    DRAG = null;
+    if (!cancel) saveOrder();
+  }, 180);
+}
+(function autoScroll() { if (DRAG?.scroll) { scrollBy(0, DRAG.scroll); dragMove(DRAG.x, DRAG.y); } requestAnimationFrame(autoScroll); })();
+q('#stock').addEventListener('pointerdown', (e) => {
+  const card = e.target.closest('.prod[data-code]');
+  if (!card || e.button > 0 || DRAG) return;
+  const onGrip = e.target.closest('.grip');
+  if (!onGrip && e.target.closest('button, a, input, select, textarea, label')) return;
+  const sx = e.clientX, sy = e.clientY, touch = e.pointerType !== 'mouse' && !onGrip;
+  let started = false, timer;
+  const begin = () => { started = true; card.classList.remove('press'); dragStart(card, sx, sy); };
+  if (touch) { card.classList.add('press'); timer = setTimeout(begin, 280); } // appui long au doigt
+  const move = (ev) => {
+    if (!started) {
+      const far = Math.hypot(ev.clientX - sx, ev.clientY - sy) > 6;
+      if (touch && far) return stop(); // le doigt fait défiler la page : pas de glisser
+      if (!touch && far) begin();
+    }
+    if (started) { ev.preventDefault(); dragMove(ev.clientX, ev.clientY); }
+  };
+  const stop = () => {
+    clearTimeout(timer); card.classList.remove('press');
+    removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
+  };
+  const up = () => { stop(); if (started) dragEnd(false); };
+  const cancel = () => { stop(); if (started) dragEnd(true); };
+  addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+});
+// Pendant un appui long au doigt, empêcher le défilement une fois la carte prise
+q('#stock').addEventListener('touchmove', (e) => { if (DRAG) e.preventDefault(); }, { passive: false });
+q('#stock').addEventListener('contextmenu', (e) => { if (e.target.closest('.prod')) e.preventDefault(); });
+q('#stock').addEventListener('keydown', (e) => {
+  const grip = e.target.closest('.grip'); if (!grip) return;
+  const card = grip.closest('.prod'), cards = stockCards(), i = cards.indexOf(card);
+  const j = ['ArrowUp', 'ArrowLeft'].includes(e.key) ? i - 1 : ['ArrowDown', 'ArrowRight'].includes(e.key) ? i + 1 : -2;
+  if (j === -2) return;
+  e.preventDefault();
+  if (j < 0 || j >= cards.length) return;
+  moveCardTo(card, cards[j], j > i);
+  card.classList.remove('kb-moved'); void card.offsetWidth; card.classList.add('kb-moved');
+  grip.focus(); saveOrder();
+  grip.setAttribute('aria-label', `Déplacer ${card.dataset.code} (n° ${j + 1}) : flèches du clavier`);
+});
+
 // ---------- Saisie rapide : codes à toucher, suggestions de produits, tailles et noms
 function chipsPick(code, vs) {
   return vs.map((v) => `<button type="button" class="chip pick ${v.available <= 0 ? 'out' : v.available < 3 ? 'low' : ''}" onclick="pickCode('${esc(code)}','${esc(v.label)}')" title="Mettre ${esc(code)} ${esc(v.label)} dans la saisie rapide">${esc(v.label)} · ${v.available}</button>`).join(' ');
@@ -1157,19 +1273,17 @@ function render() {
       <div class="row"><input id="m_${c.psid}" placeholder="Écrire au client…" style="flex:1" aria-label="Message"><button class="primary" onclick="api('/api/conversations/${c.psid}/message',{text:val('m_${c.psid}')}).then(()=>toast('Message envoyé'))">Envoyer</button></div></div>`).join('') || '<div class="empty">Aucune conversation Messenger pour l’instant.</div>';
 
   // Stock
-  q('#stock').innerHTML = S.products.length ? S.products.map((p, k) => {
+  if (!DRAG) q('#stock').innerHTML = S.products.length ? S.products.map((p, k) => {
     const sv = stockOf(p.code), dispo = sv.reduce((a, v) => a + v.available, 0), res = sv.reduce((a, v) => a + v.reserved, 0);
-    return `<div class="card prod">
+    return `<div class="card prod" data-code="${esc(p.code)}">
       <div class="photo" style="${p.photo ? `background-image:url('${esc(p.photo)}')` : ''}">${p.photo ? '' : `<button class="sm" onclick="openProduct('${esc(p.code)}')">+ Ajouter une photo</button>`}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="code" style="font-size:14px;padding:3px 10px">${esc(p.code)}</span>
-        ${dispo <= 0 ? '<span class="pill KO">Rupture</span>' : sv.some((v) => v.available < 3) ? '<span class="pill PARTIEL">Stock bas</span>' : ''}<span class="muted" style="margin-left:auto">n° ${k + 1}</span></div>
+        ${dispo <= 0 ? '<span class="pill KO">Rupture</span>' : sv.some((v) => v.available < 3) ? '<span class="pill PARTIEL">Stock bas</span>' : ''}<span class="muted num" style="margin-left:auto">n° ${k + 1}</span><button type="button" class="grip" aria-label="Déplacer ${esc(p.code)} (n° ${k + 1}) : flèches du clavier" title="Glisser pour changer l’ordre"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="3.5" r="1.4"/><circle cx="10.5" cy="3.5" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="12.5" r="1.4"/><circle cx="10.5" cy="12.5" r="1.4"/></svg></button></div>
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:16px">${esc(p.name)}</b><b style="white-space:nowrap">${mga(p.priceMga)}</b></div>
       <div class="row" style="margin:0">${chips(sv)}</div>
       <span class="muted">${dispo} disponible${dispo > 1 ? 's' : ''}${res ? ` · ${res} réservé${res > 1 ? 's' : ''}` : ''}</span>
       <div class="row" style="margin:0">
         <button class="sm" onclick="openProduct('${esc(p.code)}')">Modifier</button>
-        <button class="sm" ${k === 0 ? 'disabled' : ''} onclick="api('/api/products/${esc(p.code)}/move',{dir:'up'})" aria-label="Monter ${esc(p.code)}">↑</button>
-        <button class="sm" ${k === S.products.length - 1 ? 'disabled' : ''} onclick="api('/api/products/${esc(p.code)}/move',{dir:'down'})" aria-label="Descendre ${esc(p.code)}">↓</button>
       </div></div>`;
   }).join('') : '<div class="card empty" style="grid-column:1/-1">Aucun produit. Ajoutez ce que vous allez vendre pendant le live.</div>';
 

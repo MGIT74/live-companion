@@ -93,6 +93,16 @@ export function moveProduct(code: string, dir: 'up' | 'down') {
   persist();
 }
 
+/** Nouvel ordre de passage complet (glisser-déposer). */
+export function reorderProducts(codes: unknown) {
+  if (!Array.isArray(codes)) throw new Error('Ordre invalide');
+  const list = codes.map(String);
+  const cur = state.products.map((p) => p.code);
+  if (list.length !== cur.length || new Set(list).size !== list.length || !list.every((c) => cur.includes(c))) throw new Error('La liste des produits a changé : rechargez la page');
+  state.products = list.map((c) => state.products.find((p) => p.code === c)!);
+  persist();
+}
+
 // ---------------------------------------------------------------- Photos
 fs.mkdirSync(config.photosDir, { recursive: true });
 const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };

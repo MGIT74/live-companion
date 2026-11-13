@@ -334,6 +334,31 @@ app.post('/api/sales/:id/reopen', wrap((req) => {
   return f;
 }));
 app.get('/api/customers', wrap((req) => listCustomers(String(req.query.q ?? ''), String(req.query.sort ?? 'recent'))));
+/** Saisie rapide : noms proposés dès 3 lettres (gens qui ont commenté, puis fichier clients). */
+app.get('/api/names', wrap(async (req) => {
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const needle = norm(String(req.query.q ?? ''));
+  if (needle.length < 3) return [];
+  const match = (name: string) => { const n = norm(name); return n.startsWith(needle) || n.split(/\s+/).some((w) => w.startsWith(needle)) ? 2 : n.includes(needle) ? 1 : 0; };
+  const out = new Map<string, { name: string; source: 'comment' | 'client'; at?: string; detail?: string; score: number }>();
+  const comments = Object.values(state.comments).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+  for (const c of comments) {
+    const name = c.fromName?.trim();
+    if (!name || c.fromId === state.selectedPageId || out.has(norm(name))) continue;
+    const sc = match(name);
+    if (sc) out.set(norm(name), { name, source: 'comment', at: c.createdTime ?? c.receivedAt, detail: c.message.slice(0, 40), score: sc + 1 });
+  }
+  for (const c of await listCustomers('', 'recent')) {
+    const k = norm(c.name);
+    const sc = match(c.name);
+    if (!sc) continue;
+    const prev = out.get(k);
+    const detail = [c.phone, c.city].filter(Boolean).join(' · ');
+    if (prev) { if (detail) prev.detail = detail; continue; }
+    out.set(k, { name: c.name, source: 'client', detail: detail || `${c.orders} commande${c.orders > 1 ? 's' : ''}`, score: sc });
+  }
+  return [...out.values()].sort((a, b) => b.score - a.score).slice(0, 8).map(({ score, ...x }) => x);
+}));
 app.get('/api/customers/:key', wrap((req) => customerDetail(req.params.key)));
 app.get('/api/lives/history/:id', wrap((req) => liveDetail(req.params.id)));
 

@@ -40,7 +40,7 @@
   :focus-visible { outline:3px solid var(--accent); outline-offset:2px; border-radius:6px; }
   h1 { margin:0; font-size:28px; font-weight:700; letter-spacing:-.02em; }
   h2 { margin:0; font-size:17px; font-weight:600; }
-  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; left:0; top:0; }
 
   /* ---------- Coque : menu latéral + contenu */
   .shell { display:flex; min-height:100vh; }
@@ -353,8 +353,16 @@
   .dp-actions { display:flex; gap:10px; }
   .dp-next-sm { display:none; }
   .dp-cancel { background:transparent; box-shadow:inset 0 0 0 1px var(--line); }
+  /* Téléphone : rien ne doit élargir la page (sinon le navigateur dézoome et tout se décale) */
   @media (max-width: 860px) {
-    .dp { position:fixed; left:8px; right:8px; top:auto; bottom:calc(70px + env(safe-area-inset-bottom)); flex-direction:column; max-height:78vh; overflow-y:auto; }
+    .main { overflow-x:clip; }
+    .table-wrap { position:relative; }
+    .seg { max-width:100%; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .seg::-webkit-scrollbar { display:none; }
+    .seg button { flex:none; white-space:nowrap; }
+  }
+  @media (max-width: 860px) {
+    .dp { position:fixed; left:8px; right:8px; top:auto; bottom:calc(70px + env(safe-area-inset-bottom)); flex-direction:column; max-height:78vh; overflow-y:auto; max-width:none; }
     .dp-presets { flex-direction:row; overflow-x:auto; border-right:0; border-bottom:1px solid var(--sep); min-width:0; padding:10px; }
     .dp-presets button { flex:none; background:var(--fill); }
     .dp-cals { padding:14px; }
@@ -1237,6 +1245,9 @@ function dpOpen() {
   q('#dpFromT').value = PR.fromT; q('#dpToT').value = PR.toT;
   q('#dp').hidden = false; q('#dpTrigger').setAttribute('aria-expanded', 'true');
   dpRender();
+  // Téléphone : la période choisie est visible dans la rangée de raccourcis (qui défile de côté)
+  const row = q('#dp .dp-presets'), on = row?.querySelector('[aria-pressed="true"]');
+  if (row && on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
 }
 function dpClose() { q('#dp').hidden = true; q('#dpTrigger').setAttribute('aria-expanded', 'false'); DR = null; }
 function dpApply() {
